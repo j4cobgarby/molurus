@@ -41,6 +41,24 @@ header.nav a {
 }
 
 div.content {
+	display: flex;
+}
+
+div.left, div.right {
+	flex: 1;
+	padding: 15px;
+}
+
+div.left {
+	border-right: 1px solid #DAD9DC;
+}
+
+div.right {
+	border-left: 1px solid #DAD9DC;
+}
+
+div.feed {
+	flex: 3;
 	height: calc(100vh - 150px);
 	display: flex;
 	flex-direction: column;
@@ -48,22 +66,22 @@ div.content {
 	overflow-y: auto;
 }
 
-div.content div.post {
+div.feed div.post {
 	max-width: 600px;
 	min-width: 300px;
 	padding-top: 50px;
 }
 
-div.content div.post header img.profile-pic {
+div.feed div.post header img.profile-pic {
 	float: left;
 	margin-right: 10px;
 }
 
-div.content div.post:last-child {
+div.feed div.post:last-child {
 	padding-bottom: 100px;
 }
 
-div.content div.post header h1 {
+div.feed div.post header h1 {
 	margin-bottom: 10px;
 	font-size: 20pt;
 	color: #949494;
