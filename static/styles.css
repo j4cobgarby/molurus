@@ -32,6 +32,7 @@ header.nav h2 {
 	margin-top: 5px;
 	color: #9F937D;
 	font-size: 20pt;
+    font-weight: normal;
 }
 
 header.nav a {
