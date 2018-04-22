@@ -6,16 +6,6 @@ import hashlib
 import json
 import importlib
 
-app = Flask(__name__)
-app.config["MYSQL_HOST"] = "localhost"
-app.config["MYSQL_USER"] = "root"
-app.config["MYSQL_PASSWORD"] = "Jacobg01"
-app.config["MYSQL_DB"] = "molurus"
-
-app.secret_key = "really cool secret key"
-
-mysql = MySQL(app)
-
 '''
 API documentation
 
@@ -45,17 +35,13 @@ PUT /api/post
 
 GET /api/posts
     Returns a json of all the posts. Look at the json yourself to see how it works.
+
+POST /api/login
+    Sets the users cookies to be logged in, if the credentials are valid. Arguments:
+    
+     username:  The username to log in as
+     password:  The password to log in as
 '''
-
-def user_id_exists(id):
-    cur = mysql.connection.cursor()
-    cur.execute('''SELECT COUNT(*) FROM users WHERE user_id = %s''', (id,))
-    return int(cur.fetchone()[0]) > 0
-
-def username_exists(username):
-    cur = mysql.connection.cursor()
-    cur.execute('''SELECT COUNT(*) FROM users WHERE username = %s''', (username,))
-    return int(cur.fetchone()[0]) > 0
 
 @app.route("/api/user", methods=["PUT"])
 def new_user():
@@ -89,7 +75,6 @@ def api_login():
         return return_simple("success", "Validated.")
     else:
         return return_simple("failure", "Incorrect creds.")
-        
 
 @app.route("/")
 def main():
@@ -97,43 +82,11 @@ def main():
     cur.execute('''SELECT * FROM users''')
     return str(cur.fetchall())
 
+# Below this point, everything's just for testing
+
 @app.route("/set")
 def set_session():
     param = request.args["to"]
     session["s"] = param
     session.modified = True
     return return_simple("success", "Updated session")
-
-def create_user(username, email, password, permissions):
-    print("Creating user {}".format(username))
-
-    pass_hash = hash_password(password, username) 
-    
-    # Insert the new user into the database
-    cur = mysql.connection.cursor()
-
-    try:
-        cur.execute(
-            '''INSERT INTO `users`(`user_id`, `username`, `email_address`, `pass_hash`, `permissions`, `preferred_colour_scheme`) 
-                VALUES (NULL, %s, %s, %s, %s, %s)''',
-                (username, email, pass_hash, permissions, 1))
-        mysql.connection.commit()
-        return True
-    except:
-        print("SQL Error.")
-        mysql.connection.rollback()
-        return False
-
-def login_validate(username, password):
-    cur = mysql.connection.cursor()
-    cur.execute('''SELECT COUNT(*) FROM users WHERE username = %s AND pass_hash = %s''', (username, hash_password(password, username)))
-    return int(cur.fetchone()[0]) > 0
-    
-
-def create_post(user_id, body, tags):
-    try:
-        auth_token = session["auth_token"]
-    except KeyError:
-        return return_simple("failure", "Authentication token not set. No post was created.")
-
-    cur = mysql.connection.cursor()
