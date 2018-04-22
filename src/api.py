@@ -86,13 +86,16 @@ def api_login():
         cur = mysql.connection.cursor()
         cur.execute('''SELECT user_id FROM users WHERE username = %s''', (username,))
         user_id = int(str(cur.fetchone()[0]))
+        return return_simple("success", "Validated.")
+    else:
+        return return_simple("failure", "Incorrect creds.")
         
 
 @app.route("/")
 def main():
     cur = mysql.connection.cursor()
-    cur.execute('''SELECT user_id FROM users WHERE username = %s''', ("j4cobgarby",))
-    return str(cur.fetchone()[0])
+    cur.execute('''SELECT * FROM users''')
+    return str(cur.fetchall())
 
 @app.route("/set")
 def set_session():
@@ -123,7 +126,6 @@ def create_user(username, email, password, permissions):
 
 def login_validate(username, password):
     cur = mysql.connection.cursor()
-
     cur.execute('''SELECT COUNT(*) FROM users WHERE username = %s AND pass_hash = %s''', (username, hash_password(password, username)))
     return int(cur.fetchone()[0]) > 0
     
