@@ -6,57 +6,112 @@ import hashlib
 import json
 import importlib
 
-'''
-API documentation
+@app.route("/api/user", methods=["PUT", "DELETE", "GET"])
+def api_user():
+    if request.method == "PUT":
+        username =    request.args["username"]
+        email    =    request.args["email"]
+        password =    request.args["password"]
+        permissions = request.args["permissions"]
 
-PUT /api/user
-    Creates a user. The following arguments must be given:
+        if (username is None or email is None or password is None or permissions is None):
+            return return_simple("failure", "Required arguments were not all given.")
 
-     username:      The username of the user
-     email:         The email of the user
-     password:      The password (non-hashed - the api hashes it)
-     permissions:   The permissions, a comma seperated list of any amount of these:
+        if create_user(username, email, password, permissions):
+            return return_simple("success", "Inserted new user.")
+        else:
+            return return_simple("failure", "Failed to insert new user.")
 
-                        *:      Equivalent to a list of every other permission
+    elif request.method == "DELETE":
+        if "user_id" not in request.args:
+            return return_simple("failure", "Required arguments were not all given.")
 
-                        cp:     Can create a post
-                        ep:     Can edit any post
-                        dp:     Can delete any post
+        user_id = int(request.args["user_id"])
 
-                        cc:     Can comment on posts
-                        ec:     Can edit any comment
-                        dc:     Can delete any comment
+        if not is_logged_in():
+            return return_simple("failure", "Failed to delete user because you're not logged in.")
 
-PUT /api/post
-    Creates a new post. The logged-in user is taken from the session cookie. Arguments:
+        if "du" not in get_user_permissions(int(session["user_id"])) and user_id != int(session["user_id"]):
+            return return_simple("failure", "Failed to delete user because of lack of permissions.")
 
-     body:          The text content of the post. Max 2500 characters.
-     tags:          Comma seperated tags, e.g. "foo,bar,baz"
+        if not user_id_exists(user_id):
+            return return_simple("failure", "Failed to delete user because the user doesn't exist.")
 
-GET /api/posts
-    Returns a json of all the posts. Look at the json yourself to see how it works.
+        if delete_user(user_id):
+            return return_simple("success", "Successfully deleted user.")
+        else:
+            return return_simple("failure", "Failed to delete user.")
 
-POST /api/login
-    Sets the users cookies to be logged in, if the credentials are valid. Arguments:
-    
-     username:  The username to log in as
-     password:  The password to log in as
-'''
+    else: # GET
+        if "user_id" not in request.args:
+            return return_simple("failure", "Required arguments were not all given")
 
-@app.route("/api/user", methods=["PUT"])
-def new_user():
-    username =    request.args["username"]
-    email    =    request.args["email"]
-    password =    request.args["password"]
-    permissions = request.args["permissions"]
+        user_id = int(request.args["user_id"])
 
-    if (username is None or email is None or password is None or permissions is None):
-        return return_simple("failure", "Required arguments were not all given.")
+        if not user_id_exists(user_id):
+            return return_simple("failure", "User does not exist.")
 
-    if create_user(username, email, password, permissions):
-        return return_simple("success", "Inserted new user.")
+        return_format = "json"
+
+        if "format" in request.args:
+            return_format = request.args["format"] 
+
+        if return_format not in ["json", "python"]:
+            return_format = "json"
+
+        ret = get_user(user_id)
+        
+        if return_format == "python":
+            return str(ret)
+
+        return Response(json.dumps(ret), mimetype="application/json")
+
+@app.route("/api/post", methods=["PUT", "DELETE", "GET"])
+def api_post():
+    if not is_logged_in():
+        return return_simple("failure", "Not logged in as anyone.")
+
+    user_id = int(session["user_id"])
+
+    if not user_id_exists(user_id):
+        return return_simple("failure", "User id isn't a real user.")
+
+    body = request.args["body"]
+    tags = request.args["tags"]
+
+    if create_post(user_id, body, tags):
+        return return_simple("success", "Inserted new post.")
     else:
-        return return_simple("failure", "Failed to insert new user.")
+        return return_simple("failure", "Failed to create post.")
+
+@app.route("/api/comment", methods=["PUT", "DELETE", "GET"])
+def api_comment():
+    pass
+
+@app.route("/api/users", methods=["GET"])
+def api_users():
+    pass
+
+@app.route("/api/posts", methods=["GET"])
+def api_posts():
+    return_format = "json"
+
+    if "format" in request.args:
+        return_format = request.args["format"]
+
+    if return_format not in ["json", "python"]:
+        return_format = "json"
+
+    ret = get_all_posts()
+
+    if return_format == "python":
+        return str(ret)
+
+    return Response(json.dumps(ret), mimetype="application/json")
+
+@app.route("/api/comments", methods=["GET"])
+def api_comments():
+    pass
 
 @app.route("/api/login", methods=["POST"])
 def api_login():
@@ -72,21 +127,11 @@ def api_login():
         cur = mysql.connection.cursor()
         cur.execute('''SELECT user_id FROM users WHERE username = %s''', (username,))
         user_id = int(str(cur.fetchone()[0]))
+        session["user_id"] = user_id
         return return_simple("success", "Validated.")
     else:
         return return_simple("failure", "Incorrect creds.")
 
 @app.route("/")
-def main():
-    cur = mysql.connection.cursor()
-    cur.execute('''SELECT * FROM users''')
-    return str(cur.fetchall())
-
-# Below this point, everything's just for testing
-
-@app.route("/set")
-def set_session():
-    param = request.args["to"]
-    session["s"] = param
-    session.modified = True
-    return return_simple("success", "Updated session")
+def api_main():
+    return "Main"

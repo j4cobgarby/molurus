@@ -1,0 +1,105 @@
+            A P I   D O C U M E N T A T I O N
+
+            PUT
+
+PUT /api/user
+    Creates a user. The following arguments must be given:
+
+     username:      The username of the user
+     email:         The email of the user
+     password:      The password (non-hashed - the api hashes it)
+     permissions:   The permissions, a comma seperated list of any amount of these:
+
+                        *:      Equivalent to a list of every other permission
+
+                        cp:     Can create a post
+                        ep:     Can edit any post
+                        dp:     Can delete any post
+
+                        cc:     Can comment on posts
+                        ec:     Can edit any comment
+                        dc:     Can delete any comment
+
+                        bu:     Can ban users from using the services
+                        du:     Can delete any user account
+
+PUT /api/post
+    Creates a new post. The logged-in user is taken from the session cookie. Arguments:
+
+     body:          The text content of the post. Max 2500 characters.
+     tags:          Comma seperated tags, e.g. "foo,bar,baz"
+
+
+* PUT /api/comment
+    Creates a new comment on a post.
+
+     post_id:   The post to comment on.
+     body:      The text body of the comment.
+
+
+            GET
+
+* GET /api/user
+    Returns a user
+
+     user_id:   The id of the user to get.
+     format:    The return format, 'json' or 'python'. Default 'json'.
+
+* GET /api/post
+    Returns a specific post.
+
+     post_id:   The id of the post to get
+     format:    Return format, either 'json' or 'python'. Default 'json'.
+
+* GET /api/comment
+    Returns a specific comment.
+     comment_id:    The id of the comment to get.
+     format:    Return format. 'json' or 'python'. Default 'json'.
+
+* GET /api/users
+    Returns all users.
+
+     format: Return format. 'json' or 'python'. Default 'json'.
+
+GET /api/posts
+    Returns all the posts. Look at the json yourself to see how it works. Argument:
+
+     format:    The return format, either 'json' or 'python'
+                If nothing is specified, or what _is_ specified isn't valid, then
+                the value is defaulted to 'json'
+
+* GET /api/comments
+    Returns all the comments on a specific post.
+
+     format:    Identical meaning to format on 'GET /api/posts'.
+     post_id:   The post to get comments from.
+
+
+            POST
+
+POST /api/login
+    Sets the users cookies to be logged in, if the credentials are valid. Arguments:
+
+     username:  The username to log in as
+     password:  The password to log in as
+
+
+            DELETE
+
+DELETE /api/user
+    Deletes a user. If the deletee is not the same user as the deleter, then the deleter must have
+    the permission 'du'[delete-user].
+
+     user_id:   The id of the user to delete.
+
+* DELETE /api/post
+    Deletes a post. If the post doesn't belong to the deleter, then the deleter must have the permission
+    'dp'[delete-post].
+
+     post_id:   The id of the post to delete.
+
+* DELETE /api/comment
+    Deletes a comment. If the comment doesn't belong to the delete, then the deleter must have the
+    permission `du`[delete-user].
+
+     comment_id:    The id of the comment.
