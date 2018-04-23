@@ -40,6 +40,11 @@ def username_exists(username):
     cur.execute('''SELECT COUNT(*) FROM users WHERE username = %s''', (username,))
     return int(cur.fetchone()[0]) > 0
 
+def post_id_exists(post_id):
+    cur = mysql.connection.cursor()
+    cur.execute('''SELECT COUNT(*) FROM posts WHERE post_id = %s''', (user_id,))
+    return int(cur.fetchone()[0]) > 0
+
 def is_logged_in():
     return ("user_id" in session)
 
@@ -179,6 +184,27 @@ def get_user(user_id):
     cur.execute('''SELECT * FROM users WHERE user_id = %s''', (user_id,))
     user = cur.fetchone()
 
-    print("User: " + str(user))
-
     return {"user_id" : user[0], "username" : user[1]}
+
+def delete_post(post_id):
+    cur = mysql.connection.cursor()
+
+    try:
+        cur.execute('''DELETE FROM posts WHERE post_id = %s''', (post_id,))
+        mysql.connection.commit()
+        return True
+    except:
+        print("SQL Error")
+        mysql.connection.rollback()
+        return False
+
+def get_post(post_id):
+    if not post_id_exists(post_id):
+        return False
+
+    cur = mysql.connection.cursor()
+    cur.execute('''SELECT * FROM posts WHERE post_id = %s''', (post_id,))
+    post = cur.fetchone()
+
+    return {"post_id" : post[0], "user_id" : post[1], "body" : post[2], 
+            "tags" : post[3], "date_posted" : post[4], "date_edited" : post[5], "amount_edits" : posts[6]}

@@ -45,7 +45,7 @@ GET /api/user
      user_id:   The id of the user to get.
      format:    The return format, 'json' or 'python'. Default 'json'.
 
-* GET /api/post
+GET /api/post
     Returns a specific post.
 
      post_id:   The id of the post to get
@@ -92,7 +92,7 @@ DELETE /api/user
 
      user_id:   The id of the user to delete.
 
-* DELETE /api/post
+DELETE /api/post
     Deletes a post. If the post doesn't belong to the deleter, then the deleter must have the permission
     'dp'[delete-post].
 
