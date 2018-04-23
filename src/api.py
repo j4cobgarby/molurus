@@ -11,16 +11,14 @@ def api_user():
     if request.method == "PUT":
         if ("username" not in request.args or 
             "email" not in request.args or
-            "password" not in request.args or
-            "permissions" not in request.args):
+            "password" not in request.args):
             return return_simple("failure", "Required arguments were not all given.")
 
         username    = request.args["username"]
         email       = request.args["email"]
         password    = request.args["password"]
-        permissions = request.args["permissions"]
 
-        if create_user(username, email, password, permissions):
+        if create_user(username, email, password, "cp,cc"):
             return return_simple("success", "Inserted new user.")
         else:
             return return_simple("failure", "Failed to insert new user.")
