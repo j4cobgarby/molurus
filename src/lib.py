@@ -132,6 +132,21 @@ def get_all_posts():
 
     return ret
 
+
+def get_all_users():
+    cur = mysql.connection.cursor()
+    cur.execute('''SELECT * FROM users''')
+    results = cur.fetchall()
+    ret = []
+
+    for result in results:
+        ret.append({
+            "user_id" : result[0],
+            "username" : result[1]
+            })
+
+    return ret
+
 def get_user_permissions(user_id):
     cur = mysql.connection.cursor()
     cur.execute('''SELECT permissions FROM users WHERE user_id = %s''', (user_id,))

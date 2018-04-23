@@ -9,13 +9,16 @@ import importlib
 @app.route("/api/user", methods=["PUT", "DELETE", "GET"])
 def api_user():
     if request.method == "PUT":
-        username =    request.args["username"]
-        email    =    request.args["email"]
-        password =    request.args["password"]
-        permissions = request.args["permissions"]
-
-        if (username is None or email is None or password is None or permissions is None):
+        if ("username" not in request.args or 
+            "email" not in request.args or
+            "password" not in request.args or
+            "permissions" not in request.args):
             return return_simple("failure", "Required arguments were not all given.")
+
+        username    = request.args["username"]
+        email       = request.args["email"]
+        password    = request.args["password"]
+        permissions = request.args["permissions"]
 
         if create_user(username, email, password, permissions):
             return return_simple("success", "Inserted new user.")
@@ -90,7 +93,20 @@ def api_comment():
 
 @app.route("/api/users", methods=["GET"])
 def api_users():
-    pass
+    return_format = "json"
+
+    if "format" in request.args:
+        return_format = request.args["format"]
+
+    if return_format not in ["json", "python"]:
+        return_format = "json"
+
+    ret = get_all_users()
+
+    if return_format == "python":
+        return str(ret)
+
+    return Response(json.dumps(ret), mimetype="application/json")
 
 @app.route("/api/posts", methods=["GET"])
 def api_posts():

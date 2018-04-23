@@ -39,7 +39,7 @@ PUT /api/post
 
             GET
 
-* GET /api/user
+GET /api/user
     Returns a user
 
      user_id:   The id of the user to get.
@@ -56,7 +56,7 @@ PUT /api/post
      comment_id:    The id of the comment to get.
      format:    Return format. 'json' or 'python'. Default 'json'.
 
-* GET /api/users
+GET /api/users
     Returns all users.
 
      format: Return format. 'json' or 'python'. Default 'json'.
