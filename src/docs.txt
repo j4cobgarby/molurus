@@ -21,8 +21,6 @@ du:     Can delete any user account
 = API INFO =
 ============
 
-            === PUT ===
-
 PUT /api/user
     Creates a user with permissions "cp,cc" The following arguments must be given:
 
@@ -36,15 +34,12 @@ PUT /api/post
      body:          The text content of the post. Max 2500 characters.
      tags:          Comma seperated tags, e.g. "foo,bar,baz"
 
-
-* PUT /api/comment
+PUT /api/comment
     Creates a new comment on a post.
 
      post_id:   The post to comment on.
      body:      The text body of the comment.
 
-
-            === GET ===
 
 GET /api/user
     Returns a user
@@ -58,7 +53,7 @@ GET /api/post
      post_id:   The id of the post to get
      format:    Return format, either 'json' or 'python'. Default 'json'.
 
-* GET /api/comment
+GET /api/comment
     Returns a specific comment.
      comment_id:    The id of the comment to get.
      format:    Return format. 'json' or 'python'. Default 'json'.
@@ -75,14 +70,12 @@ GET /api/posts
                 If nothing is specified, or what _is_ specified isn't valid, then
                 the value is defaulted to 'json'
 
-* GET /api/comments
+GET /api/comments
     Returns all the comments on a specific post.
 
      format:    Identical meaning to format on 'GET /api/posts'.
      post_id:   The post to get comments from.
 
-
-            === POST ===
 
 POST /api/login
     Sets the users cookies to be logged in, if the credentials are valid. Arguments:
@@ -90,8 +83,6 @@ POST /api/login
      username:  The username to log in as
      password:  The password to log in as
 
-
-            === DELETE ===
 
 DELETE /api/user
     Deletes a user. If the deletee is not the same user as the deleter, then the deleter must have
@@ -105,7 +96,7 @@ DELETE /api/post
 
      post_id:   The id of the post to delete.
 
-* DELETE /api/comment
+DELETE /api/comment
     Deletes a comment. If the comment doesn't belong to the delete, then the deleter must have the
     permission `du`[delete-user].
 

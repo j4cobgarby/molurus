@@ -26,10 +26,6 @@ app.secret_key = config["SECRET_KEY"]
 
 mysql = MySQL(app)
 
-'''
-Helper functions to be used in the api functions.
-'''
-
 def user_id_exists(user_id):
     cur = mysql.connection.cursor()
     cur.execute('''SELECT COUNT(*) FROM users WHERE user_id = %s''', (user_id,))
@@ -42,7 +38,12 @@ def username_exists(username):
 
 def post_id_exists(post_id):
     cur = mysql.connection.cursor()
-    cur.execute('''SELECT COUNT(*) FROM posts WHERE post_id = %s''', (user_id,))
+    cur.execute('''SELECT COUNT(*) FROM posts WHERE post_id = %s''', (post_id,))
+    return int(cur.fetchone()[0]) > 0
+
+def comment_id_exists(comment_id):
+    cur = mysql.connection.cursor()
+    cur.execute('''SELECT COUNT(*) FROM comments WHERE comment_id = %s''', (comment_id,))
     return int(cur.fetchone()[0]) > 0
 
 def is_logged_in():
@@ -83,7 +84,6 @@ def create_user(username, email, password, permissions):
         mysql.connection.commit()
         return True
     except:
-        print("SQL Error.")
         mysql.connection.rollback()
         return False
 
@@ -112,7 +112,26 @@ def create_post(user_id, body, tags):
         mysql.connection.commit()
         return True
     except:
-        print("SQL Error.")
+        mysql.connection.rollback()
+        return False
+
+def create_comment(user_id, post_id, body):
+    now = datetime.datetime.now()
+    cur = mysql.connection.cursor()
+
+    try:
+        cur.execute(
+            '''INSERT INTO `comments`(`comment_id`, `user_id`, `post_id`, `body`, `date_posted`) VALUES (NULL, %s, %s, %s, %s)''',
+                (
+                    user_id,
+                    post_id,
+                    body,
+                    now
+                )
+            )
+        mysql.connection.commit()
+        return True
+    except:
         mysql.connection.rollback()
         return False
 
@@ -137,7 +156,6 @@ def get_all_posts():
 
     return ret
 
-
 def get_all_users():
     cur = mysql.connection.cursor()
     cur.execute('''SELECT * FROM users''')
@@ -148,6 +166,23 @@ def get_all_users():
         ret.append({
             "user_id" : result[0],
             "username" : result[1]
+            })
+
+    return ret
+
+def get_all_comments():
+    cur = mysql.connection.cursor()
+    cur.execute('''SELECT * FROM comments''')
+    results = cur.fetchall()
+    ret = []
+
+    for result in results:
+        ret.append({
+            "comment_id" : result[0],
+            "user_id" : result[1],
+            "post_id" : result[2],
+            "body" : result[3],
+            "date_posted" : result[4]
             })
 
     return ret
@@ -207,4 +242,25 @@ def get_post(post_id):
     post = cur.fetchone()
 
     return {"post_id" : post[0], "user_id" : post[1], "body" : post[2], 
-            "tags" : post[3], "date_posted" : post[4], "date_edited" : post[5], "amount_edits" : posts[6]}
+            "tags" : post[3], "date_posted" : str(post[4]), "date_edited" : str(post[5]), "amount_edits" : post[6]}
+
+def delete_comment(comment_id):
+    cur = mysql.connection.cursor()
+
+    try:
+        cur.execute('''DELETE FROM comments WHERE comment_id = %s''', (comment_id,))
+        mysql.connection.commit()
+        return True
+    except:
+        mysql.connection.rollback()
+        return False
+
+def get_comment(comment_id):
+    if not comment_id_exists(comment_id):
+        return False
+
+    cur = mysql.connection.cursor()
+    cur.execute('''SELECT * FROM comments WHERE comment_id = %s''', (comment_id,))
+    com = cur.fetchone()
+
+    return {"comment_id" : com[0], "user_id" : com[1], "post_id" : com[2], "body" : com[3], "date_posted" : str(com[4])}
