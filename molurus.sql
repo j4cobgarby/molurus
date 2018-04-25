@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Apr 15, 2018 at 06:22 PM
+-- Generation Time: Apr 24, 2018 at 09:10 PM
 -- Server version: 10.1.32-MariaDB
 -- PHP Version: 7.2.4
 
@@ -25,26 +25,26 @@ SET time_zone = "+00:00";
 -- --------------------------------------------------------
 
 --
--- Table structure for table `auth_tokens`
---
-
-CREATE TABLE `auth_tokens` (
-  `token_id` int(11) NOT NULL,
-  `created` date NOT NULL,
-  `expires` date NOT NULL,
-  `user_id` int(11) NOT NULL,
-  `token` tinytext COLLATE utf16_bin NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf16 COLLATE=utf16_bin;
-
--- --------------------------------------------------------
-
---
 -- Table structure for table `colour_scheme`
 --
 
 CREATE TABLE `colour_scheme` (
   `colour_id` int(11) NOT NULL,
   `header_colour` tinytext COLLATE utf16_bin NOT NULL COMMENT 'a hex code, in the format: "rrggbb", note no hash or 0x at the beginning'
+) ENGINE=InnoDB DEFAULT CHARSET=utf16 COLLATE=utf16_bin;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `comments`
+--
+
+CREATE TABLE `comments` (
+  `comment_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `post_id` int(11) NOT NULL,
+  `body` text COLLATE utf16_bin NOT NULL,
+  `date_posted` date NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf16 COLLATE=utf16_bin;
 
 -- --------------------------------------------------------
@@ -87,7 +87,8 @@ CREATE TABLE `users` (
   `username` tinytext COLLATE utf16_bin NOT NULL,
   `email_address` text COLLATE utf16_bin NOT NULL,
   `pass_hash` text COLLATE utf16_bin NOT NULL,
-  `permissions` tinytext COLLATE utf16_bin NOT NULL COMMENT 'each character represents a permission'
+  `permissions` tinytext COLLATE utf16_bin NOT NULL COMMENT 'refer to api.py',
+  `preferred_colour_scheme` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf16 COLLATE=utf16_bin;
 
 --
@@ -95,16 +96,18 @@ CREATE TABLE `users` (
 --
 
 --
--- Indexes for table `auth_tokens`
---
-ALTER TABLE `auth_tokens`
-  ADD PRIMARY KEY (`token_id`);
-
---
 -- Indexes for table `colour_scheme`
 --
 ALTER TABLE `colour_scheme`
   ADD PRIMARY KEY (`colour_id`);
+
+--
+-- Indexes for table `comments`
+--
+ALTER TABLE `comments`
+  ADD PRIMARY KEY (`comment_id`),
+  ADD KEY `USERID` (`user_id`),
+  ADD KEY `POSTID` (`post_id`);
 
 --
 -- Indexes for table `friends`
@@ -124,23 +127,24 @@ ALTER TABLE `posts`
 -- Indexes for table `users`
 --
 ALTER TABLE `users`
-  ADD PRIMARY KEY (`user_id`);
+  ADD PRIMARY KEY (`user_id`),
+  ADD KEY `COLOURID` (`preferred_colour_scheme`);
 
 --
 -- AUTO_INCREMENT for dumped tables
 --
 
 --
--- AUTO_INCREMENT for table `auth_tokens`
---
-ALTER TABLE `auth_tokens`
-  MODIFY `token_id` int(11) NOT NULL AUTO_INCREMENT;
-
---
 -- AUTO_INCREMENT for table `colour_scheme`
 --
 ALTER TABLE `colour_scheme`
   MODIFY `colour_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `comments`
+--
+ALTER TABLE `comments`
+  MODIFY `comment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `friends`
@@ -152,13 +156,13 @@ ALTER TABLE `friends`
 -- AUTO_INCREMENT for table `posts`
 --
 ALTER TABLE `posts`
-  MODIFY `post_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `post_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

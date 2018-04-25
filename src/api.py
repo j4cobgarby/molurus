@@ -23,7 +23,7 @@ def api_user():
         else:
             return return_simple("failure", "Failed to insert new user.")
 
-    elif request.method == "DELETE":
+    if request.method == "DELETE":
         if "user_id" not in request.args:
             return return_simple("failure", "Required arguments were not all given.")
 
@@ -43,7 +43,7 @@ def api_user():
         else:
             return return_simple("failure", "Failed to delete user.")
 
-    else: # GET
+    if request.method == "GET"
         if "user_id" not in request.args:
             return return_simple("failure", "Required arguments were not all given")
 
@@ -271,4 +271,4 @@ def api_login():
 
 @app.route("/")
 def api_main():
-    return "Main"
+    return "Molurus"
