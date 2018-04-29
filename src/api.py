@@ -29,11 +29,7 @@ def api_user():
 
         user_id = int(request.args["user_id"])
 
-        if not is_logged_in():
-            return return_simple("failure", "Failed to delete user because you're not logged in.")
-
-        if "du" not in get_user_permissions(int(session["user_id"])) and user_id != int(session["user_id"]):
-            return return_simple("failure", "Failed to delete user because of lack of permissions.")
+        if not authenticate_delete(request.args, user_id, ["du"])
 
         if not user_id_exists(user_id):
             return return_simple("failure", "Failed to delete user because the user doesn't exist.")
@@ -43,7 +39,7 @@ def api_user():
         else:
             return return_simple("failure", "Failed to delete user.")
 
-    if request.method == "GET"
+    if request.method == "GET":
         if "user_id" not in request.args:
             return return_simple("failure", "Required arguments were not all given")
 
@@ -70,17 +66,10 @@ def api_user():
 @app.route("/api/post", methods=["PUT", "DELETE", "GET"])
 def api_post():
     if request.method == "PUT":
-        if not is_logged_in():
-            return return_simple("failure", "Not logged in as anyone.")
+        if not authenticate(request.args, ["cp"]):
+            return return_simple("failure", "Failed to authenticate user")
 
-        user_id = int(session["user_id"])
-
-        if not user_id_exists(user_id):
-            return return_simple("failure", "User id isn't a real user.")
-
-        if "cp" not in get_user_permissions(user_id):
-            return return_simple("failure", "Insufficient permissions")
-
+        user_id = user_id_from_token(request.args["api_token"])
         body = request.args["body"]
         tags = request.args["tags"]
 
@@ -95,14 +84,13 @@ def api_post():
 
         post_id = int(request.args["post_id"])
 
-        if not is_logged_in():
-            return return_simple("failure", "Failed to delete post because you're not logged in.")
-
-        if "dp" not in get_user_permissions(int(session["user_id"])) and user_id != int(session["user_id"]):
-            return return_simple("failure", "Lack of permissions to delete this post.")
-
         if not post_id_exists(post_id):
             return return_simple("failure", "This post doesn't exist, actually.")
+
+        post_owner = int(get_post(post_id)["user_id"])
+        
+        if not authenticate_delete(request.args, post_owner, ["dp"]):
+            return return_simple("failure", "Failed to authenticate")
 
         if delete_post(post_id):
             return return_simple("success", "Successfully deleted post.")
@@ -136,19 +124,10 @@ def api_post():
 @app.route("/api/comment", methods=["PUT", "DELETE", "GET"])
 def api_comment():
     if request.method == "PUT":
-        if not is_logged_in():
-            return return_simple("failure", "Not logged in as anyone.")
+        if not authenticate(request.args, ["cc"]):
+            return return_simple("failure", "Failed to authenticate")
 
-        user_id = int(session["user_id"])
-
-        if not user_id_exists(user_id):
-            return return_simple("failure", "User id isn't real.")
-
-        if "cc" not in get_user_permissions(user_id):
-            return return_simple("failure", "Insufficient permissions.")
-
-        if "post_id" not in request.args or "body" not in request.args:
-            return return_simple("failure", "Required arguments were not all given.")
+        user_id = user_id_from_token(request.args["api_token"])
 
         post_id = request.args["post_id"]
         body    = request.args["body"]
@@ -164,14 +143,12 @@ def api_comment():
 
         comment_id = int(request.args["comment_id"])
 
-        if not is_logged_in():
-            return return_simple("failure", "You're not logged in.")
-
-        if "dc" not in get_user_permissions(int(session["user_id"])) and user_id != int(session["user_id"]):
-            return return_simple("failure", "Lack of permissions")
-
         if not comment_id_exists(comment_id):
             return return_simple("This comment doesn't exist.")
+
+        comment_owner = int(get_comment(comment_id)["user_id"])
+        
+        if not authenticate_delete(request.args, comment_owner, ["dc"])
 
         if delete_comment(comment_id):
             return return_simple("success", "Comment successfully deleted.")
@@ -255,17 +232,19 @@ def api_comments():
 
 @app.route("/api/login", methods=["POST"])
 def api_login():
+    if "username" not in request.args or "password" not in request.args:
+        return return_simple("failure", "Required arguments were not all given")
+
     username = request.args["username"]
     password = request.args["password"]
 
-    logged_in = False
-
-    if (username is None or password is None):
-        return return_simple("failure", "Required arguments were not all given.")
-
     if login_validate(username, password):
-        session["user_id"] = userid_from_username(username)
-        return return_simple("success", "Validated.")
+        ret, token = new_api_token(userid_from_username(username), "*")
+        if ret:
+            return Response(json.dumps({"success" : "Validated user.", "token" : token}),
+                    mimetype="application/json")
+        else:
+            return return_simple("failure", "Failed to create api token.")
     else:
         return return_simple("failure", "Incorrect creds.")
 
