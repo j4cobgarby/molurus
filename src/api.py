@@ -29,7 +29,8 @@ def api_user():
 
         user_id = int(request.args["user_id"])
 
-        if not authenticate_delete(request.args, user_id, ["du"])
+        if not authenticate_delete(request.args, user_id, ["du"]):
+            return return_simple("failure", "Failed to authenticate the user")
 
         if not user_id_exists(user_id):
             return return_simple("failure", "Failed to delete user because the user doesn't exist.")
