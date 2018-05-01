@@ -1,4 +1,4 @@
-from flask import Flask, request, Response, session
+from flask import Flask, request, Response
 from flask_mysqldb import MySQL
 import hashlib
 import json
@@ -167,9 +167,6 @@ def comment_id_exists(comment_id):
     cur = mysql.connection.cursor()
     cur.execute('''SELECT COUNT(*) FROM comments WHERE comment_id = %s''', (comment_id,))
     return int(cur.fetchone()[0]) > 0
-
-def is_logged_in():
-    return ("user_id" in session)
 
 def username_from_userid(user_id):
     cur = mysql.connection.cursor()

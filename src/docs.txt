@@ -29,33 +29,32 @@ PUT /api/user
      password:      The password (non-hashed - the api hashes it)
 
 PUT /api/post
-    Creates a new post. The logged-in user is taken from the session cookie. Arguments:
+    Creates a new post. Arguments:
 
+     api_token:     A valid api token
      body:          The text content of the post. Max 2500 characters.
      tags:          Comma seperated tags, e.g. "foo,bar,baz"
 
-PUT /api/comment
+PUT /api/post/<post_id>/comment
     Creates a new comment on a post.
 
-     post_id:   The post to comment on.
+     api_token: A valid api token 
      body:      The text body of the comment.
 
 
-GET /api/user
+GET /api/user/<user_id>
     Returns a user
 
-     user_id:   The id of the user to get.
      format:    The return format, 'json' or 'python'. Default 'json'.
 
-GET /api/post
+GET /api/post/<post_id>
     Returns a specific post.
-
-     post_id:   The id of the post to get
+ 
      format:    Return format, either 'json' or 'python'. Default 'json'.
 
-GET /api/comment
+GET /api/comment/<comment_id>
     Returns a specific comment.
-     comment_id:    The id of the comment to get.
+
      format:    Return format. 'json' or 'python'. Default 'json'.
 
 GET /api/users
@@ -70,12 +69,10 @@ GET /api/posts
                 If nothing is specified, or what _is_ specified isn't valid, then
                 the value is defaulted to 'json'
 
-GET /api/comments
+GET /api/post/<post_id>/comments
     Returns all the comments on a specific post.
 
-     format:    Identical meaning to format on 'GET /api/posts'.
-     post_id:   The post to get comments from.
-
+     format:    Identical meaning to format on 'GET /api/posts'. 
 
 POST /api/login
     Sets the users cookies to be logged in, if the credentials are valid. Arguments:
@@ -83,21 +80,20 @@ POST /api/login
      username:  The username to log in as
      password:  The password to log in as
 
-
-DELETE /api/user
+DELETE /api/user/<user_id>
     Deletes a user. If the deletee is not the same user as the deleter, then the deleter must have
     the permission 'du'[delete-user].
 
-     user_id:   The id of the user to delete.
+     api_token: A valid api token 
 
-DELETE /api/post
+DELETE /api/post/<post_id>
     Deletes a post. If the post doesn't belong to the deleter, then the deleter must have the permission
     'dp'[delete-post].
 
-     post_id:   The id of the post to delete.
+     api_token: A valid api token 
 
-DELETE /api/comment
+DELETE /api/comment/<comment_id>
     Deletes a comment. If the comment doesn't belong to the delete, then the deleter must have the
     permission `du`[delete-user].
 
-     comment_id:    The id of the comment.
+     api_token:     A valid api token 
