@@ -6,29 +6,9 @@ import hashlib
 import json
 import importlib
 
-@app.route("/api/user", methods=["PUT", "DELETE", "GET"])
-def api_user():
-    if request.method == "PUT":
-        if ("username" not in request.args or 
-            "email" not in request.args or
-            "password" not in request.args):
-            return return_simple("failure", "Required arguments were not all given.")
-
-        username    = request.args["username"]
-        email       = request.args["email"]
-        password    = request.args["password"]
-
-        if create_user(username, email, password, "cp,cc"):
-            return return_simple("success", "Inserted new user.")
-        else:
-            return return_simple("failure", "Failed to insert new user.")
-
-    if request.method == "DELETE":
-        if "user_id" not in request.args:
-            return return_simple("failure", "Required arguments were not all given.")
-
-        user_id = int(request.args["user_id"])
-
+@app.route("/api/user/<int:user_id>", methods=["GET", "DELETE"])
+def api_user_user_id(user_id):
+    if request.method == "DELETE": 
         if not authenticate_delete(request.args, user_id, ["du"]):
             return return_simple("failure", "Failed to authenticate the user")
 
@@ -41,11 +21,6 @@ def api_user():
             return return_simple("failure", "Failed to delete user.")
 
     if request.method == "GET":
-        if "user_id" not in request.args:
-            return return_simple("failure", "Required arguments were not all given")
-
-        user_id = int(request.args["user_id"])
-
         if not user_id_exists(user_id):
             return return_simple("failure", "User does not exist.")
 
@@ -64,27 +39,26 @@ def api_user():
 
         return Response(json.dumps(ret), mimetype="application/json")
 
-@app.route("/api/post", methods=["PUT", "DELETE", "GET"])
-def api_post():
-    if request.method == "PUT":
-        if not authenticate(request.args, ["cp"]):
-            return return_simple("failure", "Failed to authenticate user")
-
-        user_id = user_id_from_token(request.args["api_token"])
-        body = request.args["body"]
-        tags = request.args["tags"]
-
-        if create_post(user_id, body, tags):
-            return return_simple("success", "Inserted new post.")
-        else:
-            return return_simple("failure", "Failed to create post.")
-
-    if request.method == "DELETE":
-        if "post_id" not in request.args:
+@app.route("/api/user", methods=["POST"])
+def api_user():
+    if request.method == "POST":
+        if ("username" not in request.args or 
+            "email" not in request.args or
+            "password" not in request.args):
             return return_simple("failure", "Required arguments were not all given.")
 
-        post_id = int(request.args["post_id"])
+        username    = request.args["username"]
+        email       = request.args["email"]
+        password    = request.args["password"]
 
+        if create_user(username, email, password, DEFAULT_PERMS):
+            return return_simple("success", "Inserted new user.")
+        else:
+            return return_simple("failure", "Failed to insert new user.")
+
+@app.route("/api/post/<int:post_id>", methods=["GET", "DELETE"])
+def api_post_post_id(post_id):
+    if request.method == "DELETE":
         if not post_id_exists(post_id):
             return return_simple("failure", "This post doesn't exist, actually.")
 
@@ -97,13 +71,7 @@ def api_post():
             return return_simple("success", "Successfully deleted post.")
         else:
             return return_simple("failure", "Failed to delete post.")
-
     if request.method == "GET":
-        if "post_id" not in request.args:
-            return return_simple("failure", "Required arguments were not all given.")
-
-        post_id = int(request.args["post_id"])
-
         if not post_id_exists(post_id):
             return return_simple("failure", "Post does not exist.")
 
@@ -122,9 +90,40 @@ def api_post():
 
         return Response(json.dumps(ret), mimetype="application/json")
 
-@app.route("/api/comment", methods=["PUT", "DELETE", "GET"])
+@app.route("/api/post", methods=["POST"])
+def api_post():
+    if request.method == "POST":
+        if not authenticate(request.args, ["cp"]):
+            return return_simple("failure", "Failed to authenticate user")
+
+        user_id = user_id_from_token(request.args["api_token"])
+        body = request.args["body"]
+        tags = request.args["tags"]
+
+        if create_post(user_id, body, tags):
+            return return_simple("success", "Inserted new post.")
+        else:
+            return return_simple("failure", "Failed to create post.")
+
+@app.route("/api/comment/<int:comment_id>", methods=["DELETE", "POST"])
+def api_comment_comment_id(comment_id):
+    if request.method == "DELETE":
+        if not comment_id_exists(comment_id):
+            return return_simple("failure", "This comment doesn't exist.")
+
+        comment_owner = int(get_comment(comment_id)["user_id"])
+        
+        if not authenticate_delete(request.args, comment_owner, ["dc"]):
+            return return_simple("failure", "Failed to authenticate")
+
+        if delete_comment(comment_id):
+            return return_simple("success", "Comment successfully deleted.")
+        else:
+            return return_simple("failure", "Failed to delete the post.")
+
+@app.route("/api/comment", methods=["POST", "DELETE", "GET"])
 def api_comment():
-    if request.method == "PUT":
+    if request.method == "POST":
         if not authenticate(request.args, ["cc"]):
             return return_simple("failure", "Failed to authenticate")
 
@@ -137,24 +136,6 @@ def api_comment():
             return return_simple("success", "Successfully created comment.")
         else:
             return return_simple("failure", "Failed to create comment.")
-
-    if request.method == "DELETE":
-        if "comment_id" not in request.args:
-            return return_simple("failure", "Required arguments were not all given.")
-
-        comment_id = int(request.args["comment_id"])
-
-        if not comment_id_exists(comment_id):
-            return return_simple("This comment doesn't exist.")
-
-        comment_owner = int(get_comment(comment_id)["user_id"])
-        
-        if not authenticate_delete(request.args, comment_owner, ["dc"])
-
-        if delete_comment(comment_id):
-            return return_simple("success", "Comment successfully deleted.")
-        else:
-            return return_simple("failure", "Failed to delete the post.")
 
     if request.method == "GET":
         if "comment_id" not in request.args:
@@ -179,6 +160,34 @@ def api_comment():
             return str(ret)
 
         return Response(json.dumps(ret), mimetype="application/json")
+
+@app.route("/api/friend/request/<int:receiver_id>", methods=["POST"])
+def api_friend_request(receiver_id):
+    if not authenticate(request.args, ["af"]):
+        return return_simple("failure", "Failed to authenticate")
+
+    sender_id = user_id_from_token(request.args["api_token"])
+
+    success, info = send_friend_request(sender_id, receiver_id)
+
+    if success:
+        return return_simple("success", info)
+    else:
+        return return_simple("failure", info)
+
+@app.route("/api/friend/request/revoke/<int:receiver_id>", methods=["POST"])
+def api_friend_request_revoke(receiver_id):
+    if not authenticate(request.args, ["rf"]):
+        return return_simple("failure", "Failed to authenticate")
+
+    sender_id = user_id_from_token(request.args["api_token"])
+
+    success, info = revoke_friend_request(sender_id, receiver_id)
+
+    if success:
+        return return_simple("success", info)
+    else:
+        return return_simple("failure", info)
 
 @app.route("/api/users", methods=["GET"])
 def api_users():

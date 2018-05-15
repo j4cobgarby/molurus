@@ -1,6 +1,6 @@
-================
-= GENERAL INFO =
-================
++===============
+| GENERAL INFO
++===============
 
 Permissions:
 
@@ -17,30 +17,53 @@ dc:     Can delete any comment
 bu:     Can ban users from using the services
 du:     Can delete any user account
 
-============
-= API INFO =
-============
+af:     Can send a friend request
+rf:     Can revoke a pending friend request
+uf:     Can unfriend someone
 
-PUT /api/user
+sc:     Can change preferred colour scheme
+
++===========
+| API INFO 
++===========
+| URL parameters (e.g. /foo/bar/<baz>, where `baz` is the parameter), are
+| written as just demonstrated in that example.
+|
+| Other parameters (e.g. /foo?bar=baz) are listed just below the description of each
+| route.
++===========
+
+POST /api/login
+    Sets the users cookies to be logged in, if the credentials are valid. Arguments:
+
+     username:  The username to log in as
+     password:  The password to log in as
+
+POST /api/user
     Creates a user with permissions "cp,cc" The following arguments must be given:
 
      username:      The username of the user
      email:         The email of the user
      password:      The password (non-hashed - the api hashes it)
 
-PUT /api/post
+POST /api/post
     Creates a new post. Arguments:
 
      api_token:     A valid api token
      body:          The text content of the post. Max 2500 characters.
      tags:          Comma seperated tags, e.g. "foo,bar,baz"
 
-PUT /api/post/<post_id>/comment
+POST /api/post/<post_id>/comment
     Creates a new comment on a post.
 
      api_token: A valid api token 
      body:      The text body of the comment.
 
+POST /api/friend/request/<user_id>
+    For a friendship to be made, both members must call this function with the user_id
+    of the other. friendship_strength defaults to 0
+
+     api_token: A valid api token
 
 GET /api/user/<user_id>
     Returns a user
@@ -74,12 +97,6 @@ GET /api/post/<post_id>/comments
 
      format:    Identical meaning to format on 'GET /api/posts'. 
 
-POST /api/login
-    Sets the users cookies to be logged in, if the credentials are valid. Arguments:
-
-     username:  The username to log in as
-     password:  The password to log in as
-
 DELETE /api/user/<user_id>
     Deletes a user. If the deletee is not the same user as the deleter, then the deleter must have
     the permission 'du'[delete-user].
@@ -96,4 +113,5 @@ DELETE /api/comment/<comment_id>
     Deletes a comment. If the comment doesn't belong to the delete, then the deleter must have the
     permission `du`[delete-user].
 
-     api_token:     A valid api token 
+     api_token:     A valid api token
+

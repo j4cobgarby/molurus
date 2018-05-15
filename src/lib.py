@@ -6,9 +6,15 @@ import datetime
 import secrets
 
 PERMS = [
-        "cp", "ep", "dp", # post
-        "cc", "ec", "dc", # comment
-        "bu", "du" # user
+        "cp", "ep", "dp", # Post (create/edit/delete)
+        "cc", "ec", "dc", # Comment (create/edit/delete)
+        "bu", "du", # User (ban/delete)
+        "af", "rf", "uf", # Friends (add/revoke request/unfriend)
+        "ss", # colour Scheme (set)
+        ]
+
+DEFAULT_PERMS = [
+        "cp,cc,af,rf,uf,ss"
         ]
 
 config_file = open("config", "r")
@@ -86,8 +92,6 @@ def authenticate(args, perms):
 
     user_perms = get_user_permissions(user_id)
     client_perms = get_api_token_permissions(args["api_token"])
-
-    print(user_perms, client_perms)
 
     if len(perms) == 0:
         return True
@@ -168,6 +172,12 @@ def comment_id_exists(comment_id):
     cur.execute('''SELECT COUNT(*) FROM comments WHERE comment_id = %s''', (comment_id,))
     return int(cur.fetchone()[0]) > 0
 
+def friend_request_exists(sender_id, receiver_id):
+    cur = mysql.connection.cursor()
+    cur.execute('''SELECT COUNT(*) FROM friend_requests WHERE sender_id = %s AND receiver_id = %s''',
+            (sender_id, receiver_id))
+    return int(cur.fetchone()[0]) > 0
+
 def username_from_userid(user_id):
     cur = mysql.connection.cursor()
     cur.execute('''SELECT username FROM users WHERE user_id = %s''', (user_id,))
@@ -186,6 +196,84 @@ def hash_password(password, salt):
     pass_bytes = str.encode(salt + password)
     pass_hash = hashlib.sha512(pass_bytes).hexdigest()
     return pass_hash
+
+def delete_friend_request(sender_id, receiver_id):
+    if not friend_request_exists(sender_id, receiver_id):
+        return False
+
+    cur = mysql.connection.cursor()
+    try:
+        cur.execute(
+                '''DELETE FROM friend_requests WHERE sender_id = %s AND receiver_id = %s''',
+                (sender_id, receiver_id)
+                )
+        mysql.connection.commit()
+        return True
+    except:
+        mysql.connection.rollback()
+        return False
+
+def create_friendship(friend_1, friend_2):
+    cur = mysql.connection.cursor()
+
+    try:
+        print("Friending {} and {}".format(friend_1, friend_2))
+        cur.execute(
+                '''INSERT INTO `friends`(`friendship_id`, `user_id_1`, `user_id_2`, `friendship_strength`) 
+                    VALUES (NULL, %s, %s, 0)''',
+                    (int(friend_1), int(friend_2))
+                )
+        mysql.connection.commit()
+
+        # Make sure to delete any relevant friend requests
+        delete_friend_request(friend_1, friend_2)
+        delete_friend_request(friend_2, friend_1)
+
+        return True
+    except:
+        mysql.connection.rollback()
+        return False
+
+def revoke_friend_request(sender_id, receiver_id):
+    if not friend_request_exists(sender_id, receiver_id):
+        return False, "noexist"
+
+    cur = mysql.connection.cursor()
+    try:
+        cur.execute(
+                '''DELETE FROM friend_requests WHERE sender_id = %s AND receiver_id = %s''',
+                (sender_id, receiver_id)
+                )
+        mysql.connection.commit()
+        return True, "revoked"
+    except:
+        mysql.connection.rollback()
+        return False, "database_failure"
+
+def send_friend_request(sender_id, receiver_id):
+    if friend_request_exists(receiver_id, sender_id):
+        # The would-be receiver already has asked the sender to be
+        # his friend
+        if create_friendship(sender_id, receiver_id):
+            return True, "friended"
+        else:
+            return False, "database_failure"
+
+    if friend_request_exists(sender_id, receiver_id):
+        return False, "exists"
+
+    cur = mysql.connection.cursor()
+    try:
+        cur.execute(
+                '''INSERT INTO `friend_requests`(`request_id`, `sender_id`, `receiver_id`)
+                    VALUES (NULL, %s, %s)''',
+                    (sender_id, receiver_id)
+                )
+        mysql.connection.commit()
+        return True, "requested"
+    except:
+        mysql.connection.rollback()
+        return False, "database_failure"
 
 def create_user(username, email, password, permissions):
     print("Creating user {}".format(username))
