@@ -105,7 +105,7 @@ def api_post():
         else:
             return return_simple("failure", "Failed to create post.")
 
-@app.route("/api/comment/<int:comment_id>", methods=["DELETE", "POST"])
+@app.route("/api/comment/<int:comment_id>", methods=["DELETE"])
 def api_comment_comment_id(comment_id):
     if request.method == "DELETE":
         if not comment_id_exists(comment_id):
@@ -161,21 +161,35 @@ def api_comment():
 
         return Response(json.dumps(ret), mimetype="application/json")
 
-@app.route("/api/friend/request/<int:receiver_id>", methods=["POST"])
-def api_friend_request(receiver_id):
-    if not authenticate(request.args, ["af"]):
-        return return_simple("failure", "Failed to authenticate")
+@app.route("/api/friend/<int:receiver_id>", methods=["POST", "DELETE"])
+def api_friend(receiver_id):
+    if request.method == "POST":
+        if not authenticate(request.args, ["af"]):
+            return return_simple("failure", "Failed to authenticate")
 
-    sender_id = user_id_from_token(request.args["api_token"])
+        sender_id = user_id_from_token(request.args["api_token"])
 
-    success, info = send_friend_request(sender_id, receiver_id)
+        success, info = send_friend_request(sender_id, receiver_id)
 
-    if success:
-        return return_simple("success", info)
-    else:
-        return return_simple("failure", info)
+        if success:
+            return return_simple("success", info)
+        else:
+            return return_simple("failure", info)
+    if request.method == "DELETE":
+        # remove friend
+        if not authenticate(request.args, ["uf"]):
+            return return_simple("failure", "Failed to authenticate")
 
-@app.route("/api/friend/request/revoke/<int:receiver_id>", methods=["POST"])
+        sender_id = user_id_from_token(request.args["api_token"])
+
+        success, info = unfriend(sender_id, receiver_id)
+
+        if success:
+            return return_simple("success", info)
+        else:
+            return return_simple("failure", info)
+
+@app.route("/api/friend/request_revoke/<int:receiver_id>", methods=["POST"])
 def api_friend_request_revoke(receiver_id):
     if not authenticate(request.args, ["rf"]):
         return return_simple("failure", "Failed to authenticate")

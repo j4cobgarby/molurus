@@ -26,6 +26,9 @@ sc:     Can change preferred colour scheme
 +===========
 | API INFO 
 +===========
+|
+| ** THIS IS NOT GUARANTEED TO BE UP TO DATE. REFER TO api.py **
+|
 | URL parameters (e.g. /foo/bar/<baz>, where `baz` is the parameter), are
 | written as just demonstrated in that example.
 |
@@ -64,6 +67,8 @@ POST /api/friend/request/<user_id>
     of the other. friendship_strength defaults to 0
 
      api_token: A valid api token
+
+POST /api/friend/request/revoke
 
 GET /api/user/<user_id>
     Returns a user

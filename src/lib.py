@@ -33,31 +33,37 @@ app.secret_key = config["SECRET_KEY"]
 
 mysql = MySQL(app)
 
+# True if user exists else false
 def user_id_exists(user_id):
     cur = mysql.connection.cursor()
     cur.execute('''SELECT COUNT(*) FROM users WHERE user_id = %s''', (user_id,))
     return int(cur.fetchone()[0]) > 0
 
+# True if a user has the given username else false
 def username_exists(username):
     cur = mysql.connection.cursor()
     cur.execute('''SELECT COUNT(*) FROM users WHERE username = %s''', (username,))
     return int(cur.fetchone()[0]) > 0
 
+# True if an api token exists else false
 def token_exists(token):
     cur = mysql.connection.cursor()
     cur.execute('''SELECT COUNT(*) FROM api_tokens WHERE token = %s''', (token,))
     return int(cur.fetchone()[0]) > 0
 
+# True if user has already generated a token
 def user_id_has_token(user_id):
     cur = mysql.connection.cursor()
     cur.execute('''SELECT COUNT(*) FROM api_tokens WHERE user_id = %s''', (user_id,))
     return int(cur.fetchone()[0]) > 0
 
+# Retrieve the user id from an api token
 def user_id_from_token(token):
     cur = mysql.connection.cursor()
     cur.execute('''SELECT user_id FROM api_tokens WHERE token = %s''', (token,))
     return int(cur.fetchone()[0])
 
+# Gets the api token from http args, and returns the user id of the token
 def user_id_from_request_args(args):
     if "api_token" not in args:
         return False
@@ -123,6 +129,7 @@ def authenticate_delete(args, component_owner, perms):
 
     return True
 
+# remove an api token (e.g. for logging out)
 def delete_user_id_token(user_id):
     if not user_id_has_token(user_id):
         return
@@ -137,6 +144,7 @@ def delete_user_id_token(user_id):
         mysql.connection.rollback()
         return False
 
+# Generate a new api token for a user
 def new_api_token(user_id, permissions):
     if not user_id_exists(user_id):
         return False
@@ -162,20 +170,29 @@ def new_api_token(user_id, permissions):
         mysql.connection.rollback()
         return False, ""
 
+# Check if a post exists with this id
 def post_id_exists(post_id):
     cur = mysql.connection.cursor()
     cur.execute('''SELECT COUNT(*) FROM posts WHERE post_id = %s''', (post_id,))
     return int(cur.fetchone()[0]) > 0
 
+# Check if a comment with this id exists
 def comment_id_exists(comment_id):
     cur = mysql.connection.cursor()
     cur.execute('''SELECT COUNT(*) FROM comments WHERE comment_id = %s''', (comment_id,))
     return int(cur.fetchone()[0]) > 0
 
+# Check if sender_id has sent a friend request to receiver_id
 def friend_request_exists(sender_id, receiver_id):
     cur = mysql.connection.cursor()
     cur.execute('''SELECT COUNT(*) FROM friend_requests WHERE sender_id = %s AND receiver_id = %s''',
             (sender_id, receiver_id))
+    return int(cur.fetchone()[0]) > 0
+
+def are_friends(friend_1, friend_2):
+    cur = mysql.connection.cursor()
+    cur.execute('''SELECT COUNT(*) FROM friends WHERE (user_id_1 = %s AND user_id_2 = %s) OR (user_id_1 = %s AND user_id_2 = %s)''',
+            (friend_1, friend_2, friend_2, friend_1))
     return int(cur.fetchone()[0]) > 0
 
 def username_from_userid(user_id):
@@ -188,15 +205,20 @@ def userid_from_username(username):
     cur.execute('''SELECT user_id FROM users WHERE username = %s''', (username,))
     return int(cur.fetchone()[0])
 
+# returns a json response object with a status and info, useful for quick
+# and nice returns from api calls
 def return_simple(status, info):
     json_string = json.dumps({"status" : status, "info" : info})
     return Response(json_string, mimetype="application/json")
 
+# returns the hash of a password + the salt
+# the salt should be the username
 def hash_password(password, salt):
     pass_bytes = str.encode(salt + password)
     pass_hash = hashlib.sha512(pass_bytes).hexdigest()
     return pass_hash
 
+# remove a friend request which was sent by sender_id to receiver_id
 def delete_friend_request(sender_id, receiver_id):
     if not friend_request_exists(sender_id, receiver_id):
         return False
@@ -213,6 +235,21 @@ def delete_friend_request(sender_id, receiver_id):
         mysql.connection.rollback()
         return False
 
+def unfriend(friend_1, friend_2):
+    if not are_friends(friend_1, friend_2):
+        return False, "notfriends"
+
+    cur = mysql.connection.cursor()
+    try:
+        cur.execute('''DELETE FROM friends WHERE (user_id_1 = %s AND user_id_2 = %s) OR (user_id_1 = %s AND user_id_2 = %s)''',
+                (friend_1, friend_2, friend_2, friend_1))
+        mysql.connection.commit()
+        return True, "unfriended"
+    except:
+        mysql.connection.rollback()
+        return False, "database_failure"
+
+# befriends two users
 def create_friendship(friend_1, friend_2):
     cur = mysql.connection.cursor()
 
@@ -234,6 +271,7 @@ def create_friendship(friend_1, friend_2):
         mysql.connection.rollback()
         return False
 
+# if sender_id has previously sent a friend request to receiver_id, this function undoes that
 def revoke_friend_request(sender_id, receiver_id):
     if not friend_request_exists(sender_id, receiver_id):
         return False, "noexist"
@@ -250,6 +288,8 @@ def revoke_friend_request(sender_id, receiver_id):
         mysql.connection.rollback()
         return False, "database_failure"
 
+# this is obvious what it does but i don't want to write nothing about it because it's a really
+# long function
 def send_friend_request(sender_id, receiver_id):
     if friend_request_exists(receiver_id, sender_id):
         # The would-be receiver already has asked the sender to be
@@ -275,6 +315,9 @@ def send_friend_request(sender_id, receiver_id):
         mysql.connection.rollback()
         return False, "database_failure"
 
+# permissions should be a comma seperated string of permissions, as documented
+# in docs.txt and in a list at the top of this file. for normal users, DEFAULT_PERMS
+# should be used.
 def create_user(username, email, password, permissions):
     print("Creating user {}".format(username))
 
@@ -295,12 +338,14 @@ def create_user(username, email, password, permissions):
         mysql.connection.rollback()
         return False
 
+# verify that the username/password combination supplied is valid and correct
 def login_validate(username, password):
     cur = mysql.connection.cursor()
     cur.execute('''SELECT COUNT(*) FROM users WHERE username = %s AND pass_hash = %s''', 
                 (username, hash_password(password, username)))
     return int(cur.fetchone()[0]) > 0
-    
+
+# tags should be a comma-seperated string of whatever, really
 def create_post(user_id, body, tags):
     now = datetime.datetime.now()
 
@@ -325,6 +370,8 @@ def create_post(user_id, body, tags):
         mysql.connection.rollback()
         return False
 
+# body is the text of the comment
+# post_id is the post which this is commenting on
 def create_comment(user_id, post_id, body):
     now = datetime.datetime.now()
     cur = mysql.connection.cursor()
@@ -346,6 +393,7 @@ def create_comment(user_id, post_id, body):
         mysql.connection.rollback()
         return False
 
+# returns a dictionary of all the posts
 def get_all_posts():
     cur = mysql.connection.cursor()
     cur.execute('''SELECT * FROM posts''')
@@ -367,6 +415,7 @@ def get_all_posts():
 
     return ret
 
+# returns a dictionary of all users
 def get_all_users():
     cur = mysql.connection.cursor()
     cur.execute('''SELECT * FROM users''')
@@ -381,6 +430,7 @@ def get_all_users():
 
     return ret
 
+# dictionary of all comments on a specific post
 def get_all_comments():
     cur = mysql.connection.cursor()
     cur.execute('''SELECT * FROM comments''')
@@ -393,11 +443,12 @@ def get_all_comments():
             "user_id" : result[1],
             "post_id" : result[2],
             "body" : result[3],
-            "date_posted" : result[4]
+            "date_posted" : result[4].strftime("%Y-%M-%d")
             })
 
     return ret
 
+# returns permissions as an array of strings
 def get_user_permissions(user_id):
     cur = mysql.connection.cursor()
     cur.execute('''SELECT permissions FROM users WHERE user_id = %s''', (user_id,))
@@ -410,6 +461,7 @@ def get_user_permissions(user_id):
 
     return result.split(",")
 
+# permissions of api token as array of strings
 def get_api_token_permissions(token):
     cur = mysql.connection.cursor()
     cur.execute('''SELECT client_permissions FROM api_tokens WHERE token = %s''', (token,))
@@ -420,6 +472,9 @@ def get_api_token_permissions(token):
 
     return result.split(",")
 
+# completely remove a user from the database
+# TODO: when profile pictures and uploaded assets are a thing, this should remove those
+#       too.
 def delete_user(user_id):
     cur = mysql.connection.cursor()
    
@@ -432,6 +487,7 @@ def delete_user(user_id):
         mysql.connection.rollback()
         return False
 
+# returns a dict of info about a user with the id
 def get_user(user_id):
     if not user_id_exists(user_id):
         return False
@@ -454,6 +510,7 @@ def delete_post(post_id):
         mysql.connection.rollback()
         return False
 
+# returns a dict of info about a post
 def get_post(post_id):
     if not post_id_exists(post_id):
         return False
@@ -476,6 +533,7 @@ def delete_comment(comment_id):
         mysql.connection.rollback()
         return False
 
+# returns a dict of info about a comment
 def get_comment(comment_id):
     if not comment_id_exists(comment_id):
         return False

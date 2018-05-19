@@ -1,11 +1,11 @@
 -- phpMyAdmin SQL Dump
--- version 4.8.0
+-- version 4.8.0.1
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Apr 24, 2018 at 09:10 PM
--- Server version: 10.1.32-MariaDB
--- PHP Version: 7.2.4
+-- Generation Time: May 19, 2018 at 10:58 PM
+-- Server version: 10.1.33-MariaDB
+-- PHP Version: 7.2.5
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 SET AUTOCOMMIT = 0;
@@ -25,12 +25,29 @@ SET time_zone = "+00:00";
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `api_tokens`
+--
+
+CREATE TABLE `api_tokens` (
+  `token_id` int(11) NOT NULL,
+  `token` text COLLATE utf16_bin NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `client_permissions` tinytext COLLATE utf16_bin NOT NULL COMMENT 'how can the client interact with the user account?'
+) ENGINE=InnoDB DEFAULT CHARSET=utf16 COLLATE=utf16_bin;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `colour_scheme`
 --
 
 CREATE TABLE `colour_scheme` (
   `colour_id` int(11) NOT NULL,
-  `header_colour` tinytext COLLATE utf16_bin NOT NULL COMMENT 'a hex code, in the format: "rrggbb", note no hash or 0x at the beginning'
+  `title` tinytext COLLATE utf16_bin NOT NULL,
+  `description` text COLLATE utf16_bin NOT NULL,
+  `header_colour` tinytext COLLATE utf16_bin NOT NULL COMMENT 'a hex code, in the format: "rrggbb", note no hash or 0x at the beginning',
+  `background` tinytext COLLATE utf16_bin NOT NULL,
+  `text` tinytext COLLATE utf16_bin NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf16 COLLATE=utf16_bin;
 
 -- --------------------------------------------------------
@@ -54,11 +71,23 @@ CREATE TABLE `comments` (
 --
 
 CREATE TABLE `friends` (
+  `friendship_id` int(11) NOT NULL,
   `user_id_1` int(11) NOT NULL,
   `user_id_2` int(11) NOT NULL,
-  `friendship_id` int(11) NOT NULL,
-  `friendship_strength` int(11) NOT NULL DEFAULT '0'
+  `friendship_strength` float NOT NULL DEFAULT '0' COMMENT '0-1'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf16 COLLATE=utf16_bin COMMENT='specifies a friendship between user_id_1 and user_id_2';
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `friend_requests`
+--
+
+CREATE TABLE `friend_requests` (
+  `request_id` int(11) NOT NULL,
+  `sender_id` int(11) NOT NULL,
+  `receiver_id` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf16 COLLATE=utf16_bin;
 
 -- --------------------------------------------------------
 
@@ -96,6 +125,13 @@ CREATE TABLE `users` (
 --
 
 --
+-- Indexes for table `api_tokens`
+--
+ALTER TABLE `api_tokens`
+  ADD PRIMARY KEY (`token_id`),
+  ADD KEY `USERID` (`user_id`);
+
+--
 -- Indexes for table `colour_scheme`
 --
 ALTER TABLE `colour_scheme`
@@ -118,6 +154,14 @@ ALTER TABLE `friends`
   ADD KEY `USERID2` (`user_id_2`);
 
 --
+-- Indexes for table `friend_requests`
+--
+ALTER TABLE `friend_requests`
+  ADD PRIMARY KEY (`request_id`),
+  ADD KEY `USERID_SENDER` (`sender_id`),
+  ADD KEY `USERID_RECEIVER` (`receiver_id`);
+
+--
 -- Indexes for table `posts`
 --
 ALTER TABLE `posts`
@@ -135,6 +179,12 @@ ALTER TABLE `users`
 --
 
 --
+-- AUTO_INCREMENT for table `api_tokens`
+--
+ALTER TABLE `api_tokens`
+  MODIFY `token_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+
+--
 -- AUTO_INCREMENT for table `colour_scheme`
 --
 ALTER TABLE `colour_scheme`
@@ -150,19 +200,25 @@ ALTER TABLE `comments`
 -- AUTO_INCREMENT for table `friends`
 --
 ALTER TABLE `friends`
-  MODIFY `friendship_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `friendship_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `friend_requests`
+--
+ALTER TABLE `friend_requests`
+  MODIFY `request_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `posts`
 --
 ALTER TABLE `posts`
-  MODIFY `post_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `post_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
