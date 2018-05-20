@@ -4,6 +4,7 @@ import hashlib
 import json
 import datetime
 import secrets
+import api_localization as loc
 
 PERMS = [
         "cp", "ep", "dp", # Post (create/edit/delete)
@@ -17,9 +18,12 @@ DEFAULT_PERMS = [
         "cp,cc,af,rf,uf,ss"
         ]
 
+lang = loc.langs["gb"]
+
 config_file = open("config", "r")
 config_lines = config_file.readlines()
 config = {}
+
 for ln in config_lines:
     pieces = ln.split("=")
     config[pieces[0]] = pieces[1].rstrip()
@@ -71,17 +75,17 @@ def user_id_from_token(token):
 # Gets the api token from http args, and returns the user id of the token
 def user_id_from_request_args(args):
     if "api_token" not in args:
-        return False
+        return False, lang["arg_not_given"]
 
     tok = args["api_token"]
 
     if not token_exists(tok):
-        return False
+        return False, lang["tok_noexist"]
 
     user_id = user_id_from_token(tok)
 
     if not user_id_exists(user_id):
-        return False
+        return False, lang["user_id_noexist"]
 
     return user_id
 
@@ -96,43 +100,43 @@ def user_id_from_request_args(args):
 # returns True if authenticated, otherwise False
 # False is also returned in the case of errors
 def authenticate(args, perms):
-    user_id = user_id_from_request_args(args)
+    user_id, info = user_id_from_request_args(args)
 
     if not user_id:
-        return False
+        return False, info
 
     user_perms = get_user_permissions(user_id)
     client_perms = get_api_token_permissions(args["api_token"])
 
     if len(perms) == 0:
-        return True
+        return True, lang["authenticated"]
 
     for perm in perms:
         if perm not in user_perms or perm not in client_perms:
-            return False
+            return False, lang["insufficient_perms"]
 
-    return True
+    return True, lang["authenticated"]
 
 # almost identical to authenticate(...), except you don't
 # need the permission to delete the component if you're the
 # owner of it
 def authenticate_delete(args, component_owner, perms):
-    user_id = user_id_from_request_args(args)
+    user_id, info = user_id_from_request_args(args)
 
     if not user_id:
-        return False
+        return False, info
 
     user_perms = get_user_permissions(user_id)
     client_perms = get_api_token_permissions(args["api_token"])
 
     if len(perms) == 0 or user_id == component_owner:
-        return True
+        return True, lang["authenticated"]
 
     for perm in perms:
         if perm not in user_perms or perm not in client_perms:
-            return False
+            return False, lang["insufficient_perms"]
 
-    return True
+    return True, lang["authenticated"]
 
 # remove an api token (e.g. for logging out)
 def delete_user_id_token(user_id):
@@ -144,15 +148,15 @@ def delete_user_id_token(user_id):
     try:
         cur.execute('''DELETE FROM api_tokens WHERE user_id = %s''', (user_id,))
         mysql.connection.commit()
-        return True
+        return True, lang["tok_deleted"]
     except:
         mysql.connection.rollback()
-        return False
+        return False, lang["database_failure"]
 
 # Generate a new api token for a user
 def new_api_token(user_id, permissions):
     if not user_id_exists(user_id):
-        return False
+        return False, lang["user_id_noexist"]
 
     if user_id_has_token(user_id): # this user already has a token.
         delete_user_id_token(user_id)
@@ -161,8 +165,6 @@ def new_api_token(user_id, permissions):
 
     while (token_exists(tok)): # make sure to get a unique token
         tok = secrets.token_hex(64)
-
-    print(tok)
 
     cur = mysql.connection.cursor()
     try:
@@ -173,7 +175,7 @@ def new_api_token(user_id, permissions):
         return True, tok
     except:
         mysql.connection.rollback()
-        return False, ""
+        return False, lang["database_failure"]
 
 # Check if a post exists with this id
 def post_id_exists(post_id):
@@ -223,43 +225,28 @@ def hash_password(password, salt):
     pass_hash = hashlib.sha512(pass_bytes).hexdigest()
     return pass_hash
 
-# remove a friend request which was sent by sender_id to receiver_id
-def delete_friend_request(sender_id, receiver_id):
-    if not friend_request_exists(sender_id, receiver_id):
-        return False
-
-    cur = mysql.connection.cursor()
-    try:
-        cur.execute(
-                '''DELETE FROM friend_requests WHERE sender_id = %s AND receiver_id = %s''',
-                (sender_id, receiver_id)
-                )
-        mysql.connection.commit()
-        return True
-    except:
-        mysql.connection.rollback()
-        return False
-
 def unfriend(friend_1, friend_2):
     if not are_friends(friend_1, friend_2):
-        return False, "notfriends"
+        return False, lang["not_friends"]
 
     cur = mysql.connection.cursor()
     try:
         cur.execute('''DELETE FROM friends WHERE (user_id_1 = %s AND user_id_2 = %s) OR (user_id_1 = %s AND user_id_2 = %s)''',
                 (friend_1, friend_2, friend_2, friend_1))
         mysql.connection.commit()
-        return True, "unfriended"
+        return True, lang["unfriended"]
     except:
         mysql.connection.rollback()
-        return False, "database_failure"
+        return False, lang["database_failure"]
 
 # befriends two users
 def create_friendship(friend_1, friend_2):
+    if are_friends(friend_1, friend_2):
+        return False, lang["already_friends"]
+
     cur = mysql.connection.cursor()
 
     try:
-        print("Friending {} and {}".format(friend_1, friend_2))
         cur.execute(
                 '''INSERT INTO `friends`(`friendship_id`, `user_id_1`, `user_id_2`, `friendship_strength`) 
                     VALUES (NULL, %s, %s, 0)''',
@@ -271,15 +258,15 @@ def create_friendship(friend_1, friend_2):
         delete_friend_request(friend_1, friend_2)
         delete_friend_request(friend_2, friend_1)
 
-        return True
+        return True, lang["friended"]
     except:
         mysql.connection.rollback()
-        return False
+        return False, lang["database_failure"]
 
 # if sender_id has previously sent a friend request to receiver_id, this function undoes that
 def revoke_friend_request(sender_id, receiver_id):
     if not friend_request_exists(sender_id, receiver_id):
-        return False, "noexist"
+        return False, lang["friend_request_noexist"]
 
     cur = mysql.connection.cursor()
     try:
@@ -288,10 +275,10 @@ def revoke_friend_request(sender_id, receiver_id):
                 (sender_id, receiver_id)
                 )
         mysql.connection.commit()
-        return True, "revoked"
+        return True, lang["friend_request_revoked"]
     except:
         mysql.connection.rollback()
-        return False, "database_failure"
+        return False, lang["database_failure"]
 
 # this is obvious what it does but i don't want to write nothing about it because it's a really
 # long function
@@ -299,13 +286,14 @@ def send_friend_request(sender_id, receiver_id):
     if friend_request_exists(receiver_id, sender_id):
         # The would-be receiver already has asked the sender to be
         # his friend
-        if create_friendship(sender_id, receiver_id):
-            return True, "friended"
+        success, info = create_friendship(sender_id, receiver_id)
+        if success:
+            return True, lang["friended"]
         else:
-            return False, "database_failure"
+            return False, info
 
     if friend_request_exists(sender_id, receiver_id):
-        return False, "exists"
+        return False, lang["friend_request_exists"]
 
     cur = mysql.connection.cursor()
     try:
@@ -315,16 +303,17 @@ def send_friend_request(sender_id, receiver_id):
                     (sender_id, receiver_id)
                 )
         mysql.connection.commit()
-        return True, "requested"
+        return True, lang["friend_requested"]
     except:
         mysql.connection.rollback()
-        return False, "database_failure"
+        return False, lang["database_failure"]
 
 # permissions should be a comma seperated string of permissions, as documented
 # in docs.txt and in a list at the top of this file. for normal users, DEFAULT_PERMS
 # should be used.
 def create_user(username, email, password, permissions):
-    print("Creating user {}".format(username))
+    if username_exists(username):
+        return False, lang["username_exists"]
 
     pass_hash = hash_password(password, username) 
     
@@ -338,10 +327,10 @@ def create_user(username, email, password, permissions):
                 VALUES (NULL, %s, %s, %s, %s, %s)''',
                 (username, email, pass_hash, permissions, 1))
         mysql.connection.commit()
-        return True
+        return True, lang["user_created"]
     except:
         mysql.connection.rollback()
-        return False
+        return False, lang["database_failure"]
 
 # verify that the username/password combination supplied is valid and correct
 def login_validate(username, password):
@@ -370,10 +359,10 @@ def create_post(user_id, body, tags):
                 )
             )
         mysql.connection.commit()
-        return True
+        return True, lang["post_created"]
     except:
         mysql.connection.rollback()
-        return False
+        return False, lang["database_failure"]
 
 # body is the text of the comment
 # post_id is the post which this is commenting on
@@ -393,10 +382,10 @@ def create_comment(user_id, post_id, body):
                 )
             )
         mysql.connection.commit()
-        return True
+        return True, lang["comment_created"]
     except:
         mysql.connection.rollback()
-        return False
+        return False, lang["database_failure"]
 
 # returns a dictionary of all the posts
 def get_all_posts():
@@ -513,16 +502,16 @@ def delete_user(user_id):
     try:
         cur.execute('''DELETE FROM users WHERE user_id = %s''', (user_id,))
         mysql.connection.commit()
-        return True
+        return True, lang["user_deleted"]
     except:
         print("SQL Error")
         mysql.connection.rollback()
-        return False
+        return False, lang["database_failure"]
 
 # returns a dict of info about a user with the id
 def get_user(user_id):
     if not user_id_exists(user_id):
-        return False
+        return False, lang["user_id_noexist"]
 
     cur = mysql.connection.cursor()
     cur.execute('''SELECT * FROM users WHERE user_id = %s''', (user_id,))
@@ -531,21 +520,24 @@ def get_user(user_id):
     return {"user_id" : user[0], "username" : user[1]}
 
 def delete_post(post_id):
+    if not post_id_exists(post_id):
+        return False, lang["post_noexist"]
+
     cur = mysql.connection.cursor()
 
     try:
         cur.execute('''DELETE FROM posts WHERE post_id = %s''', (post_id,))
         mysql.connection.commit()
-        return True
+        return True, lang["post_deleted"]
     except:
         print("SQL Error")
         mysql.connection.rollback()
-        return False
+        return False, lang["database_failure"]
 
 # returns a dict of info about a post
 def get_post(post_id):
     if not post_id_exists(post_id):
-        return False
+        return False, lang["post_noexist"]
 
     cur = mysql.connection.cursor()
     cur.execute('''SELECT * FROM posts WHERE post_id = %s''', (post_id,))
@@ -555,20 +547,23 @@ def get_post(post_id):
             "tags" : post[3], "date_posted" : str(post[4]), "date_edited" : str(post[5]), "amount_edits" : post[6]}
 
 def delete_comment(comment_id):
+    if not comment_id_exists(comment_id):
+        return False, lang["comment_noexist"]
+
     cur = mysql.connection.cursor()
 
     try:
         cur.execute('''DELETE FROM comments WHERE comment_id = %s''', (comment_id,))
         mysql.connection.commit()
-        return True
+        return True, lang["comment_deleted"]
     except:
         mysql.connection.rollback()
-        return False
+        return False, lang["database_failure"]
 
 # returns a dict of info about a comment
 def get_comment(comment_id):
     if not comment_id_exists(comment_id):
-        return False
+        return False, lang["comment_noexist"]
 
     cur = mysql.connection.cursor()
     cur.execute('''SELECT * FROM comments WHERE comment_id = %s''', (comment_id,))
