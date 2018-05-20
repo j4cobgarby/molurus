@@ -39,6 +39,14 @@ def api_user_user_id(user_id):
 
         return Response(json.dumps(ret), mimetype="application/json")
 
+@app.route("/api/user/<int:user_id>/username", methods=["GET"])
+def api_user_user_id_username(user_id):
+    if not user_id_exists(user_id):
+        return return_simple("failure", "User does not exist.")
+
+    ret = {"user_id": user_id, "username": username_from_userid(user_id)}
+    return Response(json.dumps(ret), mimetype="application/json")
+
 @app.route("/api/user", methods=["POST"])
 def api_user():
     if request.method == "POST":
@@ -223,6 +231,27 @@ def api_users():
 @app.route("/api/posts", methods=["GET"])
 def api_posts():
     return_format = "json"
+    since_year = None
+    skip = 0
+    limit = 30
+
+    if "since" in request.args:
+        try:
+            since_year = datetime.datetime.strptime(request.args["since"], "%Y-%M-%d")
+        except:
+            return return_simple("failure", "Invalid date")
+
+    if "skip" in request.args:
+        try:
+            skip = int(request.args["skip"])
+        except:
+            return return_simple("failure", "Invalid skip value (possibly not int)")
+
+    if "limit" in request.args:
+        try:
+            limit = int(request.args["limit"])
+        except:
+            return return_simple("failure", "Invalid limit value (possible not int)")
 
     if "format" in request.args:
         return_format = request.args["format"]
@@ -230,7 +259,7 @@ def api_posts():
     if return_format not in ["json", "python"]:
         return_format = "json"
 
-    ret = get_all_posts()
+    ret = get_conditional_posts(since_year, skip, limit)
 
     if return_format == "python":
         return str(ret)

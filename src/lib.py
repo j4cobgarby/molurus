@@ -33,6 +33,11 @@ app.secret_key = config["SECRET_KEY"]
 
 mysql = MySQL(app)
 
+def create_test_database(name="molurus_test"):
+    cur = mysql.connection.cursor()
+    cur.execute('''CREATE DATABASE %s''', (name,))
+    print("Database created: {}".format(name))
+
 # True if user exists else false
 def user_id_exists(user_id):
     cur = mysql.connection.cursor()
@@ -400,6 +405,33 @@ def get_all_posts():
     results = cur.fetchall()
     ret = []
 
+    for result in results:
+        d = {
+            "post_id" : result[0],
+            "user_id" : result[1],
+            "body" : result[2],
+            "tags" : result[3],
+            "date_posted" : result[4].strftime("%Y-%M-%d"),
+            "date_edited" : result[5].strftime("%Y-%M-%d"),
+            "amount_edits" : result[6]
+        }
+
+        ret.append(d)
+
+    return ret
+
+def get_conditional_posts(since=None, skip=0, limit=30):
+    cur = mysql.connection.cursor()
+
+    if since:
+        cur.execute('''SELECT * FROM posts WHERE date_posted > %s LIMIT %s OFFSET %s''',
+                (since, limit, skip))
+    else:
+        cur.execute('''SELECT * FROM posts LIMIT %s OFFSET %s''',
+                (limit, skip))
+
+    results = cur.fetchall()
+    ret = []
     for result in results:
         d = {
             "post_id" : result[0],

@@ -68,7 +68,13 @@ POST /api/friend/request/<user_id>
 
      api_token: A valid api token
 
-POST /api/friend/request/revoke
+POST /api/friend/request/revoke/<user_id>
+    Revokes a friend request sent to user_id
+
+     api_token: A valid api token
+
+GET /api/user/<user_id>/username
+    Returns the username of a user
 
 GET /api/user/<user_id>
     Returns a user
@@ -92,6 +98,13 @@ GET /api/users
 
 GET /api/posts
     Returns all the posts. Look at the json yourself to see how it works. Argument:
+
+     since_year: Only include posts since this date (and including it.) A string of date format
+                 "%Y-%M-%d", or omit to not limit by date.
+
+     limit:     How many posts to get. Max 75, defaults to 30
+     
+     skip:      How many posts to skip before starting to get posts. Defaults to 0, no max
 
      format:    The return format, either 'json' or 'python'
                 If nothing is specified, or what _is_ specified isn't valid, then
