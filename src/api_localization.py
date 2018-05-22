@@ -13,6 +13,7 @@ langs = {
 
             "authenticated" :           "Successfully authenticated.",
             "insufficient_perms" :      "Either the user or the client has insufficient permissions to perform this action.",
+            "invalid_creds" :           "Invalid credentials.",
 
             "friend_request_noexist" :  "The specified friend request does not exist.",
             "friend_request_revoked" :  "Friend request successfully revoked.",

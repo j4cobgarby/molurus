@@ -37,11 +37,6 @@ app.secret_key = config["SECRET_KEY"]
 
 mysql = MySQL(app)
 
-def create_test_database(name="molurus_test"):
-    cur = mysql.connection.cursor()
-    cur.execute('''CREATE DATABASE %s''', (name,))
-    print("Database created: {}".format(name))
-
 # True if user exists else false
 def user_id_exists(user_id):
     cur = mysql.connection.cursor()
@@ -87,7 +82,7 @@ def user_id_from_request_args(args):
     if not user_id_exists(user_id):
         return False, lang["user_id_noexist"]
 
-    return user_id
+    return True, user_id
 
 # Checks if both the user and the client both have permission
 #  to do something specified by perms.
@@ -141,7 +136,7 @@ def authenticate_delete(args, component_owner, perms):
 # remove an api token (e.g. for logging out)
 def delete_user_id_token(user_id):
     if not user_id_has_token(user_id):
-        return
+        return False, lang["tok_noexist"]
 
     cur = mysql.connection.cursor()
 
@@ -216,6 +211,10 @@ def userid_from_username(username):
 # and nice returns from api calls
 def return_simple(status, info):
     json_string = json.dumps({"status" : status, "info" : info})
+    return Response(json_string, mimetype="application/json")
+
+def return_json(status, info, dict_name, ret_dict):
+    json_string = json.dumps({"status" : status, "info" : info, dict_name : ret_dict})
     return Response(json_string, mimetype="application/json")
 
 # returns the hash of a password + the salt
@@ -407,7 +406,7 @@ def get_all_posts():
 
         ret.append(d)
 
-    return ret
+    return True, ret
 
 def get_conditional_posts(since=None, skip=0, limit=30):
     cur = mysql.connection.cursor()
@@ -434,7 +433,7 @@ def get_conditional_posts(since=None, skip=0, limit=30):
 
         ret.append(d)
 
-    return ret
+    return True, ret
 
 # returns a dictionary of all users
 def get_all_users():
@@ -449,7 +448,7 @@ def get_all_users():
             "username" : result[1]
             })
 
-    return ret
+    return True, ret
 
 # dictionary of all comments on a specific post
 def get_all_comments():
@@ -467,7 +466,7 @@ def get_all_comments():
             "date_posted" : result[4].strftime("%Y-%M-%d")
             })
 
-    return ret
+    return True, ret
 
 # returns permissions as an array of strings
 def get_user_permissions(user_id):
@@ -517,7 +516,7 @@ def get_user(user_id):
     cur.execute('''SELECT * FROM users WHERE user_id = %s''', (user_id,))
     user = cur.fetchone()
 
-    return {"user_id" : user[0], "username" : user[1]}
+    return True, {"user_id" : user[0], "username" : user[1]}
 
 def delete_post(post_id):
     if not post_id_exists(post_id):
@@ -543,7 +542,7 @@ def get_post(post_id):
     cur.execute('''SELECT * FROM posts WHERE post_id = %s''', (post_id,))
     post = cur.fetchone()
 
-    return {"post_id" : post[0], "user_id" : post[1], "body" : post[2], 
+    return True, {"post_id" : post[0], "user_id" : post[1], "body" : post[2], 
             "tags" : post[3], "date_posted" : str(post[4]), "date_edited" : str(post[5]), "amount_edits" : post[6]}
 
 def delete_comment(comment_id):
@@ -569,4 +568,4 @@ def get_comment(comment_id):
     cur.execute('''SELECT * FROM comments WHERE comment_id = %s''', (comment_id,))
     com = cur.fetchone()
 
-    return {"comment_id" : com[0], "user_id" : com[1], "post_id" : com[2], "body" : com[3], "date_posted" : str(com[4])}
+    return True, {"comment_id" : com[0], "user_id" : com[1], "post_id" : com[2], "body" : com[3], "date_posted" : str(com[4])}

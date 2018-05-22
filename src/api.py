@@ -9,20 +9,22 @@ import importlib
 @app.route("/api/user/<int:user_id>", methods=["GET", "DELETE"])
 def api_user_user_id(user_id):
     if request.method == "DELETE": 
-        if not authenticate_delete(request.args, user_id, ["du"]):
-            return return_simple("failure", "Failed to authenticate the user")
+        succ, info = authenticate_delete(request.args, user_id, ["du"])
+        if not succ:
+            return return_simple("failure", info)
 
-        if not user_id_exists(user_id):
-            return return_simple("failure", "Failed to delete user because the user doesn't exist.")
+        succ, info = user_id_exists(user_id)
+        if not succ:
+            return return_simple("failure", info)
 
-        if delete_user(user_id):
-            return return_simple("success", "Successfully deleted user.")
+        succ, info = delete_user(user_id)
+        if not succ:
+            return return_simple("success", info)
         else:
-            return return_simple("failure", "Failed to delete user.")
+            return return_simple("failure", info)
 
     if request.method == "GET":
-        if not user_id_exists(user_id):
-            return return_simple("failure", "User does not exist.")
+        create_test_database()
 
         return_format = "json"
 
@@ -32,17 +34,19 @@ def api_user_user_id(user_id):
         if return_format not in ["json", "python"]:
             return_format = "json"
 
-        ret = get_user(user_id)
+        succ, info = get_user(user_id)
+        if not succ:
+            return return_simple("failure", info)
         
         if return_format == "python":
-            return str(ret)
+            return str(info)
 
-        return Response(json.dumps(ret), mimetype="application/json")
+        return Response(json.dumps(info), mimetype="application/json")
 
 @app.route("/api/user/<int:user_id>/username", methods=["GET"])
 def api_user_user_id_username(user_id):
     if not user_id_exists(user_id):
-        return return_simple("failure", "User does not exist.")
+        return return_simple("failure", lang["user_id_noexist"])
 
     ret = {"user_id": user_id, "username": username_from_userid(user_id)}
     return Response(json.dumps(ret), mimetype="application/json")
@@ -53,36 +57,36 @@ def api_user():
         if ("username" not in request.args or 
             "email" not in request.args or
             "password" not in request.args):
-            return return_simple("failure", "Required arguments were not all given.")
+            return return_simple("failure", lang["arg_not_given"])
 
         username    = request.args["username"]
         email       = request.args["email"]
         password    = request.args["password"]
 
-        if create_user(username, email, password, DEFAULT_PERMS):
-            return return_simple("success", "Inserted new user.")
+        succ, info = create_user(username, email, password, DEFAULT_PERMS)
+        if not succ:
+            return return_simple("success", info)
         else:
-            return return_simple("failure", "Failed to insert new user.")
+            return return_simple("failure", info)
 
 @app.route("/api/post/<int:post_id>", methods=["GET", "DELETE"])
 def api_post_post_id(post_id):
     if request.method == "DELETE":
-        if not post_id_exists(post_id):
-            return return_simple("failure", "This post doesn't exist, actually.")
-
-        post_owner = int(get_post(post_id)["user_id"])
+        succ, info = get_post(post_id)
+        if not succ:
+            return return_simple("failure", info)
+        post_owner = int(info["user_id"])
         
-        if not authenticate_delete(request.args, post_owner, ["dp"]):
-            return return_simple("failure", "Failed to authenticate")
+        succ, info = authenticate_delete(request.args, post_owner, ["dp"])
+        if not succ:
+            return return_simple("failure", info)
 
-        if delete_post(post_id):
-            return return_simple("success", "Successfully deleted post.")
+        succ, info = delete_post(post_id)
+        if not succ:
+            return return_simple("success", info)
         else:
-            return return_simple("failure", "Failed to delete post.")
+            return return_simple("failure", info)
     if request.method == "GET":
-        if not post_id_exists(post_id):
-            return return_simple("failure", "Post does not exist.")
-
         return_format = "json"
 
         if "format" in request.args:
@@ -91,68 +95,76 @@ def api_post_post_id(post_id):
         if return_format not in ["json", "python"]:
             return_format = "json"
 
-        ret = get_post(post_id)
+        succ, info = get_post(post_id)
+        if not succ:
+            return return_simple("failure", info)
 
         if return_format == "python":
-            return str(ret)
+            return str(info)
 
-        return Response(json.dumps(ret), mimetype="application/json")
+        return Response(json.dumps(info), mimetype="application/json")
 
 @app.route("/api/post", methods=["POST"])
 def api_post():
     if request.method == "POST":
-        if not authenticate(request.args, ["cp"]):
-            return return_simple("failure", "Failed to authenticate user")
+        succ, info = authenticate(request.args, ["cp"])
+        if not succ:
+            return return_simple("failure", info)
 
         user_id = user_id_from_token(request.args["api_token"])
         body = request.args["body"]
         tags = request.args["tags"]
 
-        if create_post(user_id, body, tags):
-            return return_simple("success", "Inserted new post.")
+        succ, info = create_post(user_id, body, tags)
+        if succ:
+            return return_simple("success", info)
         else:
-            return return_simple("failure", "Failed to create post.")
+            return return_simple("failure", info)
 
 @app.route("/api/comment/<int:comment_id>", methods=["DELETE"])
 def api_comment_comment_id(comment_id):
     if request.method == "DELETE":
-        if not comment_id_exists(comment_id):
-            return return_simple("failure", "This comment doesn't exist.")
-
-        comment_owner = int(get_comment(comment_id)["user_id"])
+        succ, info = get_comment(comment_id)
+        if not succ:
+            return return_simple("failure", info)
+        comment_owner = int(info["user_id"])
         
-        if not authenticate_delete(request.args, comment_owner, ["dc"]):
-            return return_simple("failure", "Failed to authenticate")
+        succ, info = authenticate_delete(request.args, comment_owner, ["dc"])
+        if not succ:
+            return return_simple("failure", info)
 
-        if delete_comment(comment_id):
-            return return_simple("success", "Comment successfully deleted.")
+        succ, info = delete_comment(comment_id)
+        if not succ:
+            return return_simple("success", info)
         else:
-            return return_simple("failure", "Failed to delete the post.")
+            return return_simple("failure", info)
 
 @app.route("/api/comment", methods=["POST", "DELETE", "GET"])
 def api_comment():
     if request.method == "POST":
-        if not authenticate(request.args, ["cc"]):
-            return return_simple("failure", "Failed to authenticate")
+        succ, info = authenticate(request.args, ["cc"])
+        if not succ:
+            return return_simple("failure", info)
 
         user_id = user_id_from_token(request.args["api_token"])
 
         post_id = request.args["post_id"]
         body    = request.args["body"]
 
-        if create_comment(user_id, post_id, body):
-            return return_simple("success", "Successfully created comment.")
+        succ, info = create_comment(user_id, post_id, body)
+        if succ:
+            return return_simple("success", info)
         else:
-            return return_simple("failure", "Failed to create comment.")
+            return return_simple("failure", info)
 
     if request.method == "GET":
         if "comment_id" not in request.args:
-            return return_simple("failure", "Required arguments were not all given")
+            return return_simple("failure", lang["arg_not_given"])
 
         comment_id = int(request.args["comment_id"])
 
         if not comment_id_exists(comment_id):
-            return return_simple("failure", "This comment does not exist.")
+            return return_simple("failure", lang["comment_noexist"])
 
         return_format = "json"
 
@@ -162,12 +174,14 @@ def api_comment():
         if return_format not in ["json", "python"]:
             return_format = "json"
 
-        ret = get_comment(comment_id)
+        succ, info = get_comment(comment_id)
+        if not succ:
+            return return_simple("failure", info)
 
         if return_format == "python":
-            return str(ret)
+            return str(info)
 
-        return Response(json.dumps(ret), mimetype="application/json")
+        return Response(json.dumps(info), mimetype="application/json")
 
 @app.route("/api/friend/<int:receiver_id>", methods=["POST", "DELETE"])
 def api_friend(receiver_id):
@@ -185,28 +199,30 @@ def api_friend(receiver_id):
             return return_simple("failure", info)
     if request.method == "DELETE":
         # remove friend
-        if not authenticate(request.args, ["uf"]):
-            return return_simple("failure", "Failed to authenticate")
+        succ, info = authenticate(request.args, ["uf"])
+        if not succ:
+            return return_simple("failure", info)
 
         sender_id = user_id_from_token(request.args["api_token"])
 
-        success, info = unfriend(sender_id, receiver_id)
+        succ, info = unfriend(sender_id, receiver_id)
 
-        if success:
+        if succ:
             return return_simple("success", info)
         else:
             return return_simple("failure", info)
 
 @app.route("/api/friend/request_revoke/<int:receiver_id>", methods=["POST"])
 def api_friend_request_revoke(receiver_id):
-    if not authenticate(request.args, ["rf"]):
-        return return_simple("failure", "Failed to authenticate")
+    succ, info = authenticate(request.args, ["rf"])
+    if not succ:
+        return return_simple("failure", info)
 
     sender_id = user_id_from_token(request.args["api_token"])
 
-    success, info = revoke_friend_request(sender_id, receiver_id)
+    succ, info = revoke_friend_request(sender_id, receiver_id)
 
-    if success:
+    if succ:
         return return_simple("success", info)
     else:
         return return_simple("failure", info)
@@ -221,12 +237,14 @@ def api_users():
     if return_format not in ["json", "python"]:
         return_format = "json"
 
-    ret = get_all_users()
+    succ, info = get_all_users()
+    if not succ:
+        return return_simple("failure", info)
 
     if return_format == "python":
-        return str(ret)
+        return str(info)
 
-    return Response(json.dumps(ret), mimetype="application/json")
+    return Response(json.dumps(info), mimetype="application/json")
 
 @app.route("/api/posts", methods=["GET"])
 def api_posts():
@@ -239,19 +257,19 @@ def api_posts():
         try:
             since_year = datetime.datetime.strptime(request.args["since"], "%Y-%M-%d")
         except:
-            return return_simple("failure", "Invalid date")
+            return return_simple("failure", lang["arg_not_given"])
 
     if "skip" in request.args:
         try:
             skip = int(request.args["skip"])
         except:
-            return return_simple("failure", "Invalid skip value (possibly not int)")
+            return return_simple("failure", lang["arg_not_given"])
 
     if "limit" in request.args:
         try:
             limit = int(request.args["limit"])
         except:
-            return return_simple("failure", "Invalid limit value (possible not int)")
+            return return_simple("failure", lang["arg_not_given"])
 
     if "format" in request.args:
         return_format = request.args["format"]
@@ -259,12 +277,14 @@ def api_posts():
     if return_format not in ["json", "python"]:
         return_format = "json"
 
-    ret = get_conditional_posts(since_year, skip, limit)
+    succ, info = get_conditional_posts(since_year, skip, limit)
+    if not succ:
+        return return_failure("failure", info)
 
     if return_format == "python":
-        return str(ret)
+        return str(info)
 
-    return Response(json.dumps(ret), mimetype="application/json")
+    return Response(json.dumps(info), mimetype="application/json")
 
 @app.route("/api/comments", methods=["GET"])
 def api_comments():
@@ -276,12 +296,14 @@ def api_comments():
     if return_format not in ["json", "python"]:
         return_format = "json"
 
-    ret = get_all_comments()
+    succ, info = get_all_comments()
+    if not succ:
+        return return_failure("failure", info)
 
     if return_format == "python":
-        return str(ret)
+        return str(info)
 
-    return Response(json.dumps(ret), mimetype="application/json")
+    return Response(json.dumps(info), mimetype="application/json")
 
 @app.route("/api/login", methods=["POST"])
 def api_login():
@@ -294,12 +316,13 @@ def api_login():
     if login_validate(username, password):
         ret, token = new_api_token(userid_from_username(username), "*")
         if ret:
-            return Response(json.dumps({"success" : "Validated user.", "token" : token}),
-                    mimetype="application/json")
+            return return_json("success", "Successfully authenticated", "info", {"token" : token})
+            #return Response(json.dumps({"status" : "success", "token" : token}),
+            #        mimetype="application/json")
         else:
-            return return_simple("failure", "Failed to create api token.")
+            return return_simple("failure", token)
     else:
-        return return_simple("failure", "Incorrect creds.")
+        return return_simple("failure", lang["invalid_creds"])
 
 @app.route("/")
 def api_main():
