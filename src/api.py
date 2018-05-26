@@ -24,32 +24,11 @@ def api_user_user_id(user_id):
             return return_simple("failure", info)
 
     if request.method == "GET":
-        create_test_database()
-
-        return_format = "json"
-
-        if "format" in request.args:
-            return_format = request.args["format"] 
-
-        if return_format not in ["json", "python"]:
-            return_format = "json"
-
         succ, info = get_user(user_id)
         if not succ:
             return return_simple("failure", info)
-        
-        if return_format == "python":
-            return str(info)
 
-        return Response(json.dumps(info), mimetype="application/json")
-
-@app.route("/api/user/<int:user_id>/username", methods=["GET"])
-def api_user_user_id_username(user_id):
-    if not user_id_exists(user_id):
-        return return_simple("failure", lang["user_id_noexist"])
-
-    ret = {"user_id": user_id, "username": username_from_userid(user_id)}
-    return Response(json.dumps(ret), mimetype="application/json")
+        return return_json("success", "User got successfully", "user", info)
 
 @app.route("/api/user", methods=["POST"])
 def api_user():
@@ -64,7 +43,7 @@ def api_user():
         password    = request.args["password"]
 
         succ, info = create_user(username, email, password, DEFAULT_PERMS)
-        if not succ:
+        if succ:
             return return_simple("success", info)
         else:
             return return_simple("failure", info)
@@ -87,22 +66,11 @@ def api_post_post_id(post_id):
         else:
             return return_simple("failure", info)
     if request.method == "GET":
-        return_format = "json"
-
-        if "format" in request.args:
-            return_format = request.args["format"]
-
-        if return_format not in ["json", "python"]:
-            return_format = "json"
-
         succ, info = get_post(post_id)
         if not succ:
             return return_simple("failure", info)
 
-        if return_format == "python":
-            return str(info)
-
-        return Response(json.dumps(info), mimetype="application/json")
+        return return_json("success", "Post got successfully", "post", info)
 
 @app.route("/api/post", methods=["POST"])
 def api_post():
@@ -121,7 +89,7 @@ def api_post():
         else:
             return return_simple("failure", info)
 
-@app.route("/api/comment/<int:comment_id>", methods=["DELETE"])
+@app.route("/api/comment/<int:comment_id>", methods=["DELETE", "GET"])
 def api_comment_comment_id(comment_id):
     if request.method == "DELETE":
         succ, info = get_comment(comment_id)
@@ -139,7 +107,14 @@ def api_comment_comment_id(comment_id):
         else:
             return return_simple("failure", info)
 
-@app.route("/api/comment", methods=["POST", "DELETE", "GET"])
+    if request.method == "GET":
+        succ, info = get_comment(comment_id)
+        if not succ:
+            return return_simple("failure", info)
+
+        return return_json("success", "Comment successfully got", "comment", info)
+
+@app.route("/api/comment", methods=["POST", "GET"])
 def api_comment():
     if request.method == "POST":
         succ, info = authenticate(request.args, ["cc"])
@@ -156,32 +131,6 @@ def api_comment():
             return return_simple("success", info)
         else:
             return return_simple("failure", info)
-
-    if request.method == "GET":
-        if "comment_id" not in request.args:
-            return return_simple("failure", lang["arg_not_given"])
-
-        comment_id = int(request.args["comment_id"])
-
-        if not comment_id_exists(comment_id):
-            return return_simple("failure", lang["comment_noexist"])
-
-        return_format = "json"
-
-        if "format" in request.args:
-            return_format = request.args["format"]
-
-        if return_format not in ["json", "python"]:
-            return_format = "json"
-
-        succ, info = get_comment(comment_id)
-        if not succ:
-            return return_simple("failure", info)
-
-        if return_format == "python":
-            return str(info)
-
-        return Response(json.dumps(info), mimetype="application/json")
 
 @app.route("/api/friend/<int:receiver_id>", methods=["POST", "DELETE"])
 def api_friend(receiver_id):
@@ -229,26 +178,14 @@ def api_friend_request_revoke(receiver_id):
 
 @app.route("/api/users", methods=["GET"])
 def api_users():
-    return_format = "json"
-
-    if "format" in request.args:
-        return_format = request.args["format"]
-
-    if return_format not in ["json", "python"]:
-        return_format = "json"
-
     succ, info = get_all_users()
     if not succ:
         return return_simple("failure", info)
 
-    if return_format == "python":
-        return str(info)
-
-    return Response(json.dumps(info), mimetype="application/json")
+    return return_json("success", "Users returned successfully", "users", info)
 
 @app.route("/api/posts", methods=["GET"])
 def api_posts():
-    return_format = "json"
     since_year = None
     skip = 0
     limit = 30
@@ -271,39 +208,19 @@ def api_posts():
         except:
             return return_simple("failure", lang["arg_not_given"])
 
-    if "format" in request.args:
-        return_format = request.args["format"]
-
-    if return_format not in ["json", "python"]:
-        return_format = "json"
-
     succ, info = get_conditional_posts(since_year, skip, limit)
     if not succ:
         return return_failure("failure", info)
 
-    if return_format == "python":
-        return str(info)
-
-    return Response(json.dumps(info), mimetype="application/json")
+    return return_json("success", "Posts returned Successfully", "posts", info)
 
 @app.route("/api/comments", methods=["GET"])
 def api_comments():
-    return_format = "json"
-
-    if "format" in request.args:
-        return_format = request.args["format"]
-
-    if return_format not in ["json", "python"]:
-        return_format = "json"
-
     succ, info = get_all_comments()
     if not succ:
         return return_failure("failure", info)
 
-    if return_format == "python":
-        return str(info)
-
-    return Response(json.dumps(info), mimetype="application/json")
+    return return_json("success", "Comments returned successfully", "comments", info)
 
 @app.route("/api/login", methods=["POST"])
 def api_login():

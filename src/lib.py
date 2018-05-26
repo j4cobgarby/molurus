@@ -5,7 +5,13 @@ import json
 import datetime
 import secrets
 import api_localization as loc
+import sys
 
+# Set this to True to switch to using the test
+# database.
+TESTING = False
+
+# Every valid permission
 PERMS = [
         "cp", "ep", "dp", # Post (create/edit/delete)
         "cc", "ec", "dc", # Comment (create/edit/delete)
@@ -14,6 +20,7 @@ PERMS = [
         "ss", # colour Scheme (set)
         ]
 
+# Default perms for a new user
 DEFAULT_PERMS = [
         "cp,cc,af,rf,uf,ss"
         ]
@@ -25,13 +32,24 @@ config_lines = config_file.readlines()
 config = {}
 
 for ln in config_lines:
-    pieces = ln.split("=")
-    config[pieces[0]] = pieces[1].rstrip()
+    try:
+        pieces = ln.split("=")
+        config[pieces[0]] = pieces[1].rstrip()
+    except:
+        print("Skipping line: {}".format(ln))
 
 app = Flask(__name__)
 
 for k, v in config.items():
     app.config[k] = v
+
+if config["TESTING"].lower() == "true":
+    TESTING = True
+
+if TESTING:
+    print("Using test database.")
+    app.config["MYSQL_DB"] = config["MYSQL_DB_TESTING"]
+    app.config["MYSQL_PASSWORD"] = config["MYSQL_PASSWORD_TESTING"]
 
 app.secret_key = config["SECRET_KEY"]
 
